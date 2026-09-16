@@ -23,6 +23,7 @@ local Config = {
     ESP = true, Box = true, Name = true, HP = true, Tool = true,
     Chams = true, Tracers = false,
     Aimbot = false, ShowFOV = true, FOV = 100,
+    VisibleOnly = true,
     FIRE_RATE = 0.1, AimStrength = 0.85,
     Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
@@ -636,6 +637,7 @@ makeToggle(pages.Visual, "Tracers", "Tracers")
 
 makeToggle(pages.Aimbot, "Aimbot", "Aimbot")
 makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
+makeToggle(pages.Aimbot, "Visible Only", "VisibleOnly")
 makeSlider(pages.Aimbot, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
 makeSlider(pages.Aimbot, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
 
@@ -811,12 +813,18 @@ RunService.RenderStepped:Connect(function()
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
-                local dx = headScreen.X - centerX
-                local dy = headScreen.Y - centerY
-                local d = (dx*dx + dy*dy) ^ 0.5
-                if d < shortest then
-                    shortest = d
-                    closestTarget = head
+                local canAim = true
+                if Config.VisibleOnly then
+                    canAim = isVisible(camPos, head.Position, char)
+                end
+                if canAim then
+                    local dx = headScreen.X - centerX
+                    local dy = headScreen.Y - centerY
+                    local d = (dx*dx + dy*dy) ^ 0.5
+                    if d < shortest then
+                        shortest = d
+                        closestTarget = head
+                    end
                 end
             end
         end
