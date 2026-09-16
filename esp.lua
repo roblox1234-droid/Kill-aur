@@ -24,6 +24,8 @@ local Config = {
 local gui = Instance.new("ScreenGui")
 gui.Name = "CheatGUI"
 gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.ClipToDeviceSafeArea = false
 gui.Parent = LP:WaitForChild("PlayerGui")
 
 -- ===== ГЛАВНОЕ ОКНО =====
@@ -103,6 +105,7 @@ makeToggle(250, "Fly", "Fly")
 local notifyGui = Instance.new("ScreenGui")
 notifyGui.Name = "Notify"
 notifyGui.ResetOnSpawn = false
+notifyGui.IgnoreGuiInset = true
 notifyGui.Parent = LP:WaitForChild("PlayerGui")
 
 local notify = Instance.new("TextLabel")
@@ -162,6 +165,7 @@ local function createESP(player)
     local box = Instance.new("Frame")
     box.BackgroundTransparency = 1
     box.BorderSizePixel = 0
+    box.Visible = false
     box.Parent = gui
     
     local stroke = Instance.new("UIStroke")
@@ -283,7 +287,6 @@ function toggleFly()
     end
 end
 
--- Респавн: перезапуск флая
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     if Config.Fly then toggleFly() end
@@ -339,7 +342,8 @@ end)
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
-    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    local vpSize = Camera.ViewportSize
+    local center = Vector2.new(vpSize.X/2, vpSize.Y/2)
     local closestTarget, shortest = nil, Config.FOV
     
     for player, esp in pairs(cache) do
@@ -348,6 +352,7 @@ RunService.RenderStepped:Connect(function()
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
         
+        -- Убираем highlight, если персонаж пропал
         if esp.highlight and (not char or esp.highlight.Parent ~= char) then
             esp.highlight:Destroy()
             esp.highlight = nil
@@ -355,13 +360,12 @@ RunService.RenderStepped:Connect(function()
         
         local alive = head and root and hum and hum.Health > 0
         
-        esp.box.Visible = Config.ESP and Config.Box and alive or false
-        esp.name.Visible = Config.ESP and Config.Name and alive or false
-        esp.hpBg.Visible = Config.ESP and Config.HP and alive or false
-        esp.tool.Visible = Config.ESP and Config.Tool and alive or false
+        if not alive then
+            esp.box.Visible = false
+            continue
+        end
         
-        if not alive then continue end
-        
+        -- Chams
         if Config.ESP and Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
@@ -382,22 +386,34 @@ RunService.RenderStepped:Connect(function()
             end
         end
         
+        -- Мировые → экранные координаты
         local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
         local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
         
-        if topOn and botOn then
+        -- ГЛАВНАЯ ПРОВЕРКА: объект перед камерой и в границах экрана
+        local visible = topOn and botOn
+            and topPos.Z > 0 and botPos.Z > 0
+            and topPos.X > -50 and topPos.X < vpSize.X + 50
+            and topPos.Y > -50 and topPos.Y < vpSize.Y + 50
+            and botPos.Y > -50 and botPos.Y < vpSize.Y + 50
+        
+        if visible then
             local height = math.abs(botPos.Y - topPos.Y)
             local width = height * 0.55
             
+            esp.box.Visible = Config.ESP and Config.Box
             esp.box.Position = UDim2.fromOffset(topPos.X - width/2, topPos.Y)
             esp.box.Size = UDim2.fromOffset(width, height)
             
+            esp.name.Visible = Config.ESP and Config.Name
             local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
             esp.name.Text = string.format("%s [%dm]", player.Name, dist)
             
+            esp.tool.Visible = Config.ESP and Config.Tool
             local held = char:FindFirstChildOfClass("Tool")
             esp.tool.Text = held and held.Name or ""
             
+            esp.hpBg.Visible = Config.ESP and Config.HP
             local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
             if ratio > 0.5 then
@@ -405,18 +421,24 @@ RunService.RenderStepped:Connect(function()
             else
                 esp.hpFill.BackgroundColor3 = Color3.fromRGB(255, math.floor(255*ratio*2), 0)
             end
+        else
+            esp.box.Visible = false
         end
         
-        if Config.Aimbot and topOn then
-            local headScreen = Camera:WorldToViewportPoint(head.Position)
-            local d = (Vector2.new(headScreen.X, headScreen.Y) - center).Magnitude
-            if d < shortest then
-                shortest = d
-                closestTarget = head
+        -- Aimbot: поиск ближайшей цели
+        if Config.Aimbot then
+            local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
+            if headOn and headScreen.Z > 0 then
+                local d = (Vector2.new(headScreen.X, headScreen.Y) - center).Magnitude
+                if d < shortest then
+                    shortest = d
+                    closestTarget = head
+                end
             end
         end
     end
     
+    -- Aimbot: наведение + автострельба
     if Config.Aimbot and closestTarget then
         Camera.CFrame = Camera.CFrame:Lerp(
             CFrame.new(Camera.CFrame.Position, closestTarget.Position), 0.2
