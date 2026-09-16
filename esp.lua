@@ -32,6 +32,8 @@ local Keybinds = {
     Aimbot = Enum.KeyCode.Q,
     Fly    = Enum.KeyCode.F,
     NoClip = Enum.KeyCode.N,
+    SaveTP = Enum.KeyCode.T,
+    BackTP = Enum.KeyCode.Y,
     Menu   = Enum.KeyCode.Delete,
 }
 -- =============================================
@@ -45,8 +47,8 @@ gui.Parent = LP:WaitForChild("PlayerGui")
 
 -- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 440)
-main.Position = UDim2.new(0.5, -150, 0.5, -220)
+main.Size = UDim2.fromOffset(300, 520)
+main.Position = UDim2.new(0.5, -150, 0.5, -260)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -104,6 +106,10 @@ local function makeToggle(y, label, key)
     btn.Parent = main
 
     btn.MouseButton1Click:Connect(function()
+        -- SaveTP и BackTP — действия, не тогглы
+        if key == "SaveTP" then savePosition(); return end
+        if key == "BackTP" then teleportBack(); return end
+
         Config[key] = not Config[key]
         btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
         btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
@@ -147,7 +153,9 @@ makeToggle(190, "Chams",      "Chams")
 makeToggle(220, "Aimbot",     "Aimbot")
 makeToggle(250, "Fly",        "Fly")
 makeToggle(280, "NoClip",     "NoClip")
-makeToggle(310, "Menu Key",   "Menu")
+makeToggle(310, "Save TP",    "SaveTP")
+makeToggle(340, "Back TP",    "BackTP")
+makeToggle(370, "Menu Key",   "Menu")
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
@@ -333,7 +341,7 @@ function toggleFly()
     end
 end
 
--- ===== NOCLIP (POWERFUL) =====
+-- ===== NOCLIP (ANTI-TELEPORT) =====
 local noclipConn = nil
 
 local function applyNoClip()
@@ -343,7 +351,19 @@ local function applyNoClip()
     for _, part in ipairs(char:GetDescendants()) do
         if part:IsA("BasePart") then
             part.CanCollide = false
+            part.Massless = true
         end
+    end
+
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.PlatformStand = true
+        hum.AutoRotate = false
+    end
+
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if root then
+        root.CustomPhysicalProperties = PhysicalProperties.new(0.01, 0.3, 0.5, 1, 1)
     end
 end
 
@@ -358,12 +378,23 @@ local function stopNoClip()
         noclipConn:Disconnect()
         noclipConn = nil
     end
+
     local char = LP.Character
     if char then
         for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
+                part.Massless = false
             end
+        end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.PlatformStand = false
+            hum.AutoRotate = true
+        end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.CustomPhysicalProperties = nil
         end
     end
 end
@@ -374,6 +405,43 @@ function toggleNoClip()
     else
         stopNoClip()
     end
+end
+
+-- ===== TELEPORT BACK =====
+local savedPosition = nil
+
+function savePosition()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then
+        savedPosition = root.CFrame
+        showNotify("[ TP ]  Position saved", Color3.fromRGB(0, 200, 255))
+    else
+        showNotify("[ TP ]  No character", Color3.fromRGB(255, 80, 80))
+    end
+end
+
+function teleportBack()
+    if not savedPosition then
+        showNotify("[ TP ]  No saved position", Color3.fromRGB(255, 80, 80))
+        return
+    end
+
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then
+        showNotify("[ TP ]  No character", Color3.fromRGB(255, 80, 80))
+        return
+    end
+
+    root.CFrame = savedPosition
+    root.AssemblyLinearVelocity = Vector3.zero
+
+    if Config.Fly and flyBodyGyro then
+        flyBodyGyro.CFrame = savedPosition
+    end
+
+    showNotify("[ TP ]  Teleported back", Color3.fromRGB(0, 255, 150))
 end
 
 -- ===== РЕСПАВН =====
@@ -419,6 +487,9 @@ UIS.InputBegan:Connect(function(input, gp)
                 main.Visible = not main.Visible
                 return
             end
+
+            if key == "SaveTP" then savePosition(); return end
+            if key == "BackTP" then teleportBack(); return end
 
             if Config[key] ~= nil then
                 Config[key] = not Config[key]
