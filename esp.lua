@@ -49,7 +49,6 @@ gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- FPS + PING
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.fromOffset(120, 40)
 infoLabel.Position = UDim2.new(1, -130, 0, 10)
@@ -67,7 +66,6 @@ Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 6)
 
 local fps, frames, lastTime = 0, 0, tick()
 
--- Меню
 local main = Instance.new("Frame")
 main.Size = UDim2.fromOffset(320, 480)
 main.Position = UDim2.new(0.5, -160, 0.5, -240)
@@ -371,25 +369,42 @@ function toggleFly()
 end
 
 -- ================= NOCLIP =================
-local noclipConn
+local noclipConn = nil
 
-function toggleNoclip()
-    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
-    if Config.Noclip then
-        noclipConn = RunService.Stepped:Connect(function()
-            local char = LP.Character
-            if not char then return end
-            for _, part in ipairs(char:GetChildren()) do
-                if part:IsA("BasePart") then part.CanCollide = false end
-            end
-        end)
-    else
+local function startNoclip()
+    if noclipConn then return end
+    noclipConn = RunService.Stepped:Connect(function()
+        if not Config.Noclip then return end
         local char = LP.Character
-        if char then
-            for _, part in ipairs(char:GetChildren()) do
-                if part:IsA("BasePart") then part.CanCollide = true end
+        if not char then return end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
+                part.CanCollide = false
             end
         end
+    end)
+end
+
+local function stopNoclip()
+    if noclipConn then
+        noclipConn:Disconnect()
+        noclipConn = nil
+    end
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+function toggleNoclip()
+    if Config.Noclip then
+        startNoclip()
+    else
+        stopNoclip()
     end
 end
 
@@ -615,7 +630,6 @@ local function makeSlider(page, label, min, max, default, callback)
     end)
 end
 
--- Заполнение вкладок
 makeToggle(pages.Visual, "ESP Master", "ESP")
 makeToggle(pages.Visual, "Box", "Box")
 makeToggle(pages.Visual, "Name + Dist", "Name")
@@ -695,7 +709,6 @@ end)
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
-    -- FPS + Ping
     frames += 1
     if tick() - lastTime >= 1 then
         fps = frames
@@ -708,7 +721,6 @@ RunService.RenderStepped:Connect(function()
         infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
     end
 
-    -- FOV Circle
     if Config.ShowFOV and Config.Aimbot then
         fovCircle.Size = UDim2.fromOffset(Config.FOV * 2, Config.FOV * 2)
         fovCircle.Visible = true
@@ -735,7 +747,6 @@ RunService.RenderStepped:Connect(function()
             continue
         end
 
-        -- Chams
         if Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
@@ -802,7 +813,6 @@ RunService.RenderStepped:Connect(function()
             if esp.tracer then esp.tracer.Visible = false end
         end
 
-        -- Aimbot
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
@@ -817,12 +827,10 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- FOV color
     if Config.ShowFOV and Config.Aimbot then
         fovStroke.Color = closestTarget and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 150)
     end
 
-    -- Aimbot наведение
     if Config.Aimbot and closestTarget then
         Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, closestTarget.Position), Config.AimStrength)
         if tick() - lastShot >= Config.FIRE_RATE then
@@ -832,5 +840,8 @@ RunService.RenderStepped:Connect(function()
         end
     end
 end)
+
+-- Авто-включение Anti-AFK
+if Config.AntiAFK then toggleAntiAFK() end
 
 showNotify("Скрипт загружен! Delete = меню", Color3.fromRGB(0, 255, 150))
