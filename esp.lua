@@ -15,12 +15,12 @@ local Config = {
     Chams = true,
     Aimbot = false,
     Fly = false,
+    Noclip = false,
     FlySpeed = 50,
     FOV = 100,
     FIRE_RATE = 0.1,
 }
 
--- Клавиши по умолчанию (nil = не назначено)
 local Keybinds = {
     ESP    = nil,
     Box    = nil,
@@ -30,6 +30,7 @@ local Keybinds = {
     Chams  = nil,
     Aimbot = Enum.KeyCode.Q,
     Fly    = Enum.KeyCode.F,
+    Noclip = Enum.KeyCode.V,
     Menu   = Enum.KeyCode.Delete,
 }
 -- =============================================
@@ -41,10 +42,9 @@ gui.IgnoreGuiInset = true
 gui.ClipToDeviceSafeArea = false
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 400)
-main.Position = UDim2.new(0.5, -150, 0.5, -200)
+main.Size = UDim2.fromOffset(300, 430)
+main.Position = UDim2.new(0.5, -150, 0.5, -215)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -79,7 +79,6 @@ close.Font = Enum.Font.Code
 close.TextSize = 14
 close.Parent = main
 
--- ===== ПУНКТЫ МЕНЮ =====
 local toggles = {}
 local bindingKey = nil
 
@@ -89,7 +88,6 @@ local function getBindText(key)
 end
 
 local function makeToggle(y, label, key)
-    -- Кнопка вкл/выкл
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -80, 0, 26)
     btn.Position = UDim2.fromOffset(10, y)
@@ -107,9 +105,9 @@ local function makeToggle(y, label, key)
         btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
         btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
         if key == "Fly" then toggleFly() end
+        if key == "Noclip" then toggleNoclip() end
     end)
     
-    -- Кнопка смены клавиши
     local kb = Instance.new("TextButton")
     kb.Size = UDim2.fromOffset(60, 26)
     kb.Position = UDim2.new(1, -70, 0, y)
@@ -127,7 +125,6 @@ local function makeToggle(y, label, key)
         kb.TextColor3 = Color3.fromRGB(255, 200, 60)
     end)
     
-    -- ПКМ по кнопке клавиши = сброс бинда
     kb.MouseButton2Click:Connect(function()
         Keybinds[key] = nil
         kb.Text = "—"
@@ -138,7 +135,6 @@ local function makeToggle(y, label, key)
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
--- Размещение: сначала ESP-функции, потом Aimbot/Fly/Menu
 makeToggle(40,  "ESP Master", "ESP")
 makeToggle(70,  "Box",        "Box")
 makeToggle(100, "Name + Dist","Name")
@@ -147,9 +143,9 @@ makeToggle(160, "Tool",       "Tool")
 makeToggle(190, "Chams",      "Chams")
 makeToggle(220, "Aimbot",     "Aimbot")
 makeToggle(250, "Fly",        "Fly")
-makeToggle(280, "Menu Key",   "Menu")
+makeToggle(280, "Noclip",     "Noclip")
+makeToggle(310, "Menu Key",   "Menu")
 
--- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
 notifyGui.Name = "Notify"
 notifyGui.ResetOnSpawn = false
@@ -206,7 +202,6 @@ function showNotify(text, color)
     end)
 end
 
--- ===== ESP CACHE =====
 local cache = {}
 
 local function createESP(player)
@@ -333,12 +328,54 @@ function toggleFly()
     end
 end
 
+-- ===== NOCLIP =====
+local noclipConn
+
+local function stopNoclip()
+    if noclipConn then
+        noclipConn:Disconnect()
+        noclipConn = nil
+    end
+    local char = LP.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = true
+            end
+        end
+    end
+end
+
+local function startNoclip()
+    stopNoclip()
+    local char = LP.Character
+    if not char then return end
+    
+    noclipConn = RunService.Stepped:Connect(function()
+        local currentChar = LP.Character
+        if not currentChar then return end
+        for _, part in pairs(currentChar:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+end
+
+function toggleNoclip()
+    if Config.Noclip then
+        startNoclip()
+    else
+        stopNoclip()
+    end
+end
+
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     if Config.Fly then toggleFly() end
+    if Config.Noclip then toggleNoclip() end
 end)
 
--- ===== ОБНОВЛЕНИЕ КНОПОК =====
 local function refreshToggle(key)
     local t = toggles[key]
     if not t then return end
@@ -348,12 +385,10 @@ local function refreshToggle(key)
         or Color3.fromRGB(180, 180, 180)
 end
 
--- ===== ВВОД =====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
     
-    -- Режим назначения
     if bindingKey then
         Keybinds[bindingKey] = input.KeyCode
         local kb = toggles[bindingKey].kb
@@ -369,21 +404,19 @@ UIS.InputBegan:Connect(function(input, gp)
         return
     end
     
-    -- Проверка всех биндов
     for key, bind in pairs(Keybinds) do
         if bind and input.KeyCode == bind then
-            -- Меню
             if key == "Menu" then
                 main.Visible = not main.Visible
                 return
             end
             
-            -- Обычные тогглы
             if Config[key] ~= nil then
                 Config[key] = not Config[key]
                 refreshToggle(key)
                 
                 if key == "Fly" then toggleFly() end
+                if key == "Noclip" then toggleNoclip() end
                 
                 showNotify(
                     string.format("[ %s: %s ]", toggles[key].label, Config[key] and "ON" or "OFF"),
@@ -395,12 +428,10 @@ UIS.InputBegan:Connect(function(input, gp)
     end
 end)
 
--- ===== КНОПКА ЗАКРЫТИЯ =====
 close.MouseButton1Click:Connect(function()
     main.Visible = false
 end)
 
--- ===== ОСНОВНОЙ ЦИКЛ =====
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
