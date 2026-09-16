@@ -5,6 +5,18 @@ local UIS = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LP = Players.LocalPlayer
 
+-- Локализация
+local pairs = pairs
+local ipairs = ipairs
+local Vector3new = Vector3.new
+local UDim2fromOffset = UDim2.fromOffset
+local mathfloor = math.floor
+local mathclamp = math.clamp
+local mathatan2 = math.atan2
+local mathdeg = math.deg
+local tick = tick
+local CFramenew = CFrame.new
+
 -- ================= НАСТРОЙКИ =================
 local Config = {
     ESP = true,
@@ -13,7 +25,7 @@ local Config = {
     HP = true,
     Tool = true,
     Chams = true,
-    Skeleton = true,         -- ← скелет
+    Skeleton = true,
     Aimbot = false,
     Fly = false,
     Noclip = false,
@@ -35,8 +47,8 @@ local Keybinds = {
     Noclip   = Enum.KeyCode.V,
     Menu     = Enum.KeyCode.Delete,
 }
--- =============================================
 
+-- ===== GUI =====
 local gui = Instance.new("ScreenGui")
 gui.Name = "CheatGUI"
 gui.ResetOnSpawn = false
@@ -44,10 +56,9 @@ gui.IgnoreGuiInset = true
 gui.ClipToDeviceSafeArea = false
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 460)
-main.Position = UDim2.new(0.5, -150, 0.5, -230)
+main.Size = UDim2.fromOffset(300, 490)
+main.Position = UDim2.new(0.5, -150, 0.5, -245)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -82,9 +93,10 @@ close.Font = Enum.Font.Code
 close.TextSize = 14
 close.Parent = main
 
--- ===== ПУНКТЫ МЕНЮ =====
+-- ===== МЕНЮ =====
 local toggles = {}
 local bindingKey = nil
+local FlySpeedDisplay = nil
 
 local function getBindText(key)
     local kb = Keybinds[key]
@@ -94,7 +106,7 @@ end
 local function makeToggle(y, label, key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -80, 0, 26)
-    btn.Position = UDim2.fromOffset(10, y)
+    btn.Position = UDim2fromOffset(10, y)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     btn.BorderSizePixel = 0
     btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
@@ -103,7 +115,7 @@ local function makeToggle(y, label, key)
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = main
-    
+
     btn.MouseButton1Click:Connect(function()
         Config[key] = not Config[key]
         btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
@@ -111,7 +123,7 @@ local function makeToggle(y, label, key)
         if key == "Fly" then toggleFly() end
         if key == "Noclip" then toggleNoclip() end
     end)
-    
+
     local kb = Instance.new("TextButton")
     kb.Size = UDim2.fromOffset(60, 26)
     kb.Position = UDim2.new(1, -70, 0, y)
@@ -122,20 +134,20 @@ local function makeToggle(y, label, key)
     kb.Font = Enum.Font.Code
     kb.TextSize = 12
     kb.Parent = main
-    
+
     kb.MouseButton1Click:Connect(function()
         bindingKey = key
         kb.Text = "..."
         kb.TextColor3 = Color3.fromRGB(255, 200, 60)
     end)
-    
+
     kb.MouseButton2Click:Connect(function()
         Keybinds[key] = nil
         kb.Text = "—"
         kb.TextColor3 = Color3.fromRGB(120, 120, 120)
-        showNotify(string.format("[ %s ]  bind reset", label), Color3.fromRGB(255, 180, 60))
+        showNotify("[ " .. label .. " ]  bind reset", Color3.fromRGB(255, 180, 60))
     end)
-    
+
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
@@ -150,6 +162,63 @@ makeToggle(250, "Aimbot",     "Aimbot")
 makeToggle(280, "Fly",        "Fly")
 makeToggle(310, "Noclip",     "Noclip")
 makeToggle(340, "Menu Key",   "Menu")
+
+-- Скорость флая
+local speedFrame = Instance.new("Frame")
+speedFrame.Size = UDim2.new(1, -20, 0, 30)
+speedFrame.Position = UDim2fromOffset(10, 370)
+speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+speedFrame.BorderSizePixel = 0
+speedFrame.Parent = main
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "  Fly Speed: 50"
+speedLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
+speedLabel.Font = Enum.Font.Code
+speedLabel.TextSize = 13
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = speedFrame
+FlySpeedDisplay = speedLabel
+
+local minusBtn = Instance.new("TextButton")
+minusBtn.Size = UDim2.fromOffset(34, 24)
+minusBtn.Position = UDim2.new(1, -78, 0.5, -12)
+minusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+minusBtn.BorderSizePixel = 0
+minusBtn.Text = "−"
+minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+minusBtn.Font = Enum.Font.Code
+minusBtn.TextSize = 18
+minusBtn.Parent = speedFrame
+
+local plusBtn = Instance.new("TextButton")
+plusBtn.Size = UDim2.fromOffset(34, 24)
+plusBtn.Position = UDim2.new(1, -38, 0.5, -12)
+plusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+plusBtn.BorderSizePixel = 0
+plusBtn.Text = "+"
+plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+plusBtn.Font = Enum.Font.Code
+plusBtn.TextSize = 18
+plusBtn.Parent = speedFrame
+
+local function updateSpeedDisplay()
+    FlySpeedDisplay.Text = "  Fly Speed: " .. Config.FlySpeed
+end
+
+minusBtn.MouseButton1Click:Connect(function()
+    Config.FlySpeed = mathclamp(Config.FlySpeed - 5, 10, 200)
+    updateSpeedDisplay()
+    showNotify("[ Fly Speed: " .. Config.FlySpeed .. " ]", Color3.fromRGB(0, 200, 255))
+end)
+
+plusBtn.MouseButton1Click:Connect(function()
+    Config.FlySpeed = mathclamp(Config.FlySpeed + 5, 10, 200)
+    updateSpeedDisplay()
+    showNotify("[ Fly Speed: " .. Config.FlySpeed .. " ]", Color3.fromRGB(0, 200, 255))
+end)
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
@@ -181,7 +250,7 @@ notifyStroke.Parent = notify
 local notifyToken = 0
 
 function showNotify(text, color)
-    notifyToken = notifyToken + 1
+    notifyToken += 1
     local myToken = notifyToken
     notify.Text = text
     notify.TextColor3 = color
@@ -190,7 +259,7 @@ function showNotify(text, color)
     notify.TextTransparency = 0
     notify.BackgroundTransparency = 0.2
     notifyStroke.Transparency = 0
-    
+
     task.spawn(function()
         task.wait(1.2)
         if notifyToken ~= myToken then return end
@@ -207,7 +276,7 @@ function showNotify(text, color)
     end)
 end
 
--- ===== ESP + СКЕЛЕТ =====
+-- ===== ESP CACHE =====
 local cache = {}
 
 local BONE_CONNECTIONS_R15 = {
@@ -246,7 +315,6 @@ local function createBoneLine(parent)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(1, 0)
     corner.Parent = line
-
     return line
 end
 
@@ -257,13 +325,12 @@ local function createESP(player)
     box.Visible = false
     box.Parent = gui
 
-    -- Углы
     local corners = {}
     local function makeCorner(ax, ay, px, py)
         local f1 = Instance.new("Frame")
         f1.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
         f1.BorderSizePixel = 0
-        f1.Size = UDim2.fromOffset(9, 2)
+        f1.Size = UDim2fromOffset(9, 2)
         f1.AnchorPoint = Vector2.new(ax, ay)
         f1.Position = UDim2.new(px, 0, py, 0)
         f1.Parent = box
@@ -271,11 +338,10 @@ local function createESP(player)
         local f2 = Instance.new("Frame")
         f2.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
         f2.BorderSizePixel = 0
-        f2.Size = UDim2.fromOffset(2, 9)
+        f2.Size = UDim2fromOffset(2, 9)
         f2.AnchorPoint = Vector2.new(ax, ay)
         f2.Position = UDim2.new(px, 0, py, 0)
         f2.Parent = box
-
         return {f1, f2}
     end
 
@@ -284,7 +350,6 @@ local function createESP(player)
     corners.BL = makeCorner(0, 1, 0, 1)
     corners.BR = makeCorner(1, 1, 1, 1)
 
-    -- Имя
     local name = Instance.new("TextLabel")
     name.BackgroundTransparency = 1
     name.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -297,7 +362,6 @@ local function createESP(player)
     name.TextXAlignment = Enum.TextXAlignment.Center
     name.Parent = box
 
-    -- Инструмент
     local tool = Instance.new("TextLabel")
     tool.BackgroundTransparency = 1
     tool.TextColor3 = Color3.fromRGB(255, 210, 80)
@@ -310,7 +374,6 @@ local function createESP(player)
     tool.TextXAlignment = Enum.TextXAlignment.Center
     tool.Parent = box
 
-    -- HP
     local hpBg = Instance.new("Frame")
     hpBg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
     hpBg.BackgroundTransparency = 0.25
@@ -319,9 +382,7 @@ local function createESP(player)
     hpBg.Position = UDim2.new(0, -11, 0, 0)
     hpBg.Parent = box
 
-    local hpBgCorner = Instance.new("UICorner")
-    hpBgCorner.CornerRadius = UDim.new(1, 0)
-    hpBgCorner.Parent = hpBg
+    Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
 
     local hpFill = Instance.new("Frame")
     hpFill.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
@@ -331,19 +392,8 @@ local function createESP(player)
     hpFill.Position = UDim2.new(0, 0, 1, 0)
     hpFill.Parent = hpBg
 
-    local hpFillCorner = Instance.new("UICorner")
-    hpFillCorner.CornerRadius = UDim.new(1, 0)
-    hpFillCorner.Parent = hpFill
+    Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
 
-    local gradient = Instance.new("UIGradient")
-    gradient.Rotation = 90
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 255, 140)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 170, 80))
-    })
-    gradient.Parent = hpFill
-
-    -- Скелет
     local skeletonFolder = Instance.new("Folder")
     skeletonFolder.Name = "Skeleton"
     skeletonFolder.Parent = box
@@ -357,22 +407,68 @@ local function createESP(player)
         hpFill = hpFill,
         skeletonFolder = skeletonFolder,
         bones = {},
-        highlight = nil
+        highlight = nil,
+        -- кэш частей
+        head = nil,
+        root = nil,
+        humanoid = nil,
+        char = nil,
+        isR15 = false,
     }
 end
 
 local function removeESP(player)
-    if cache[player] then
-        if cache[player].highlight then cache[player].highlight:Destroy() end
-        cache[player].box:Destroy()
+    local data = cache[player]
+    if data then
+        if data.highlight then data.highlight:Destroy() end
+        data.box:Destroy()
         cache[player] = nil
     end
 end
 
-Players.PlayerAdded:Connect(createESP)
+local function updateCharacterCache(player)
+    local data = cache[player]
+    if not data then return end
+
+    local char = player.Character
+    if not char then
+        data.char = nil
+        data.head = nil
+        data.root = nil
+        data.humanoid = nil
+        return
+    end
+
+    data.char = char
+    data.head = char:FindFirstChild("Head")
+    data.root = char:FindFirstChild("HumanoidRootPart")
+    data.humanoid = char:FindFirstChildOfClass("Humanoid")
+    data.isR15 = char:FindFirstChild("UpperTorso") ~= nil
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player == LP then return end
+    createESP(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.3)
+        updateCharacterCache(player)
+    end)
+    player.CharacterRemoving:Connect(function()
+        updateCharacterCache(player)
+    end)
+end)
+
 Players.PlayerRemoving:Connect(removeESP)
-for _, p in pairs(Players:GetPlayers()) do
-    if p ~= LP then createESP(p) end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then
+        createESP(player)
+        updateCharacterCache(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.3)
+            updateCharacterCache(player)
+        end)
+    end
 end
 
 -- ===== FLY =====
@@ -390,31 +486,31 @@ local function startFly()
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-    
+
     hum.PlatformStand = true
-    
+
     flyBodyVel = Instance.new("BodyVelocity")
-    flyBodyVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+    flyBodyVel.MaxForce = Vector3new(1e5, 1e5, 1e5)
     flyBodyVel.Velocity = Vector3.zero
     flyBodyVel.Parent = root
-    
+
     flyBodyGyro = Instance.new("BodyGyro")
-    flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+    flyBodyGyro.MaxTorque = Vector3new(1e5, 1e5, 1e5)
     flyBodyGyro.P = 3000
     flyBodyGyro.CFrame = root.CFrame
     flyBodyGyro.Parent = root
-    
+
     flyConn = RunService.RenderStepped:Connect(function()
-        if not (flyBodyVel and flyBodyGyro and root.Parent) then return end
+        if not flyBodyVel or not flyBodyGyro or not root.Parent then return end
         local cam = Camera.CFrame
         local move = Vector3.zero
         if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.LookVector end
         if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
-        
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3new(0, 1, 0) end
+
         flyBodyVel.Velocity = move.Magnitude > 0 and move.Unit * Config.FlySpeed or Vector3.zero
         flyBodyGyro.CFrame = cam
     end)
@@ -440,7 +536,7 @@ local function stopNoclip()
     end
     local char = LP.Character
     if char then
-        for _, part in pairs(char:GetDescendants()) do
+        for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
             end
@@ -450,17 +546,17 @@ end
 
 local function startNoclip()
     stopNoclip()
-    local char = LP.Character
-    if not char then return end
-    
     noclipConn = RunService.Stepped:Connect(function()
-        local currentChar = LP.Character
-        if not currentChar then return end
-        for _, part in pairs(currentChar:GetDescendants()) do
+        local char = LP.Character
+        if not char then return end
+        for _, part in ipairs(char:GetChildren()) do -- быстрее, чем GetDescendants
             if part:IsA("BasePart") then
                 part.CanCollide = false
             end
         end
+        -- дополнительные части
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then hrp.CanCollide = false end
     end)
 end
 
@@ -473,12 +569,12 @@ function toggleNoclip()
 end
 
 LP.CharacterAdded:Connect(function()
-    task.wait(0.5)
+    task.wait(0.4)
     if Config.Fly then toggleFly() end
     if Config.Noclip then toggleNoclip() end
 end)
 
--- ===== ОБНОВЛЕНИЕ КНОПОК =====
+-- ===== ВВОД =====
 local function refreshToggle(key)
     local t = toggles[key]
     if not t then return end
@@ -486,11 +582,10 @@ local function refreshToggle(key)
     t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
 end
 
--- ===== ВВОД =====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-    
+
     if bindingKey then
         Keybinds[bindingKey] = input.KeyCode
         local kb = toggles[bindingKey].kb
@@ -498,29 +593,24 @@ UIS.InputBegan:Connect(function(input, gp)
             kb.Text = input.KeyCode.Name
             kb.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
-        showNotify(string.format("[ %s ]  bind -> %s", toggles[bindingKey].label, input.KeyCode.Name), Color3.fromRGB(0, 200, 255))
+        showNotify("[ " .. toggles[bindingKey].label .. " ]  bind -> " .. input.KeyCode.Name, Color3.fromRGB(0, 200, 255))
         bindingKey = nil
         return
     end
-    
+
     for key, bind in pairs(Keybinds) do
         if bind and input.KeyCode == bind then
             if key == "Menu" then
                 main.Visible = not main.Visible
                 return
             end
-            
             if Config[key] ~= nil then
                 Config[key] = not Config[key]
                 refreshToggle(key)
-                
                 if key == "Fly" then toggleFly() end
                 if key == "Noclip" then toggleNoclip() end
-                
-                showNotify(
-                    string.format("[ %s: %s ]", toggles[key].label, Config[key] and "ON" or "OFF"),
-                    Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80)
-                )
+                showNotify("[ " .. toggles[key].label .. ": " .. (Config[key] and "ON" or "OFF") .. " ]",
+                    Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80))
             end
             return
         end
@@ -535,31 +625,34 @@ end)
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
+    if not Config.ESP and not Config.Aimbot then return end
+
     local vpSize = Camera.ViewportSize
-    local center = Vector2.new(vpSize.X/2, vpSize.Y/2)
+    local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
     local closestTarget, shortest = nil, Config.FOV
-    
+    local camPos = Camera.CFrame.Position
+
     for player, esp in pairs(cache) do
-        local char = player.Character
-        local head = char and char:FindFirstChild("Head")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
-        if esp.highlight and (not char or esp.highlight.Parent ~= char) then
-            esp.highlight:Destroy()
-            esp.highlight = nil
+        -- обновляем кэш если нужно
+        if not esp.char or not esp.char.Parent then
+            updateCharacterCache(player)
         end
-        
-        local alive = head and root and hum and hum.Health > 0
-        
-        if not alive then
+
+        local head = esp.head
+        local root = esp.root
+        local hum = esp.humanoid
+        local char = esp.char
+
+        if not (head and root and hum and hum.Health > 0) then
             esp.box.Visible = false
-            for _, line in ipairs(esp.bones) do line.Visible = false end
+            for i = 1, #esp.bones do
+                esp.bones[i].Visible = false
+            end
             continue
         end
-        
+
         -- Chams
-        if Config.ESP and Config.Chams then
+        if Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
                 local hl = Instance.new("Highlight")
@@ -572,108 +665,116 @@ RunService.RenderStepped:Connect(function()
                 hl.Parent = char
                 esp.highlight = hl
             end
-        else
-            if esp.highlight then
-                esp.highlight:Destroy()
-                esp.highlight = nil
-            end
+        elseif esp.highlight then
+            esp.highlight:Destroy()
+            esp.highlight = nil
         end
-        
-        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
-        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
-        
+
+        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3new(0, 0.9, 0))
+        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3new(0, 3.1, 0))
+
         local visible = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
-        
-        if visible then
-            local height = math.abs(botPos.Y - topPos.Y)
+
+        if visible and Config.ESP then
+            local height = botPos.Y - topPos.Y
+            if height < 0 then height = -height end
             local width = height * 0.55
-            
-            -- Бокс
-            esp.box.Visible = Config.ESP and Config.Box
-            esp.box.Position = UDim2.fromOffset(topPos.X - width/2, topPos.Y)
-            esp.box.Size = UDim2.fromOffset(width, height)
-            
-            local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+
+            esp.box.Visible = Config.Box
+            esp.box.Position = UDim2fromOffset(topPos.X - width * 0.5, topPos.Y)
+            esp.box.Size = UDim2fromOffset(width, height)
+
+            local ratio = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
             local boxColor = ratio > 0.6 and Color3.fromRGB(0, 255, 140)
                 or ratio > 0.3 and Color3.fromRGB(255, 220, 50)
                 or Color3.fromRGB(255, 70, 70)
-            
+
             for _, group in pairs(esp.corners) do
-                for _, f in pairs(group) do
-                    f.BackgroundColor3 = boxColor
-                end
+                group[1].BackgroundColor3 = boxColor
+                group[2].BackgroundColor3 = boxColor
             end
-            
-            -- Имя
-            esp.name.Visible = Config.ESP and Config.Name
-            local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-            esp.name.Text = string.format("%s  ·  %dm", player.Name, dist)
-            
-            -- Инструмент
-            esp.tool.Visible = Config.ESP and Config.Tool
-            local held = char:FindFirstChildOfClass("Tool")
-            esp.tool.Text = held and held.Name or ""
-            
-            -- HP
-            esp.hpBg.Visible = Config.ESP and Config.HP
-            esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
-            
-            -- ===== СКЕЛЕТ =====
-            if Config.ESP and Config.Skeleton then
-                local isR15 = char:FindFirstChild("UpperTorso") ~= nil
-                local connections = isR15 and BONE_CONNECTIONS_R15 or BONE_CONNECTIONS_R6
-                
-                if #esp.bones < #connections then
-                    for i = #esp.bones + 1, #connections do
-                        table.insert(esp.bones, createBoneLine(esp.skeletonFolder))
+
+            if Config.Name then
+                esp.name.Visible = true
+                local dist = mathfloor((camPos - root.Position).Magnitude)
+                esp.name.Text = player.Name .. "  ·  " .. dist .. "m"
+            else
+                esp.name.Visible = false
+            end
+
+            if Config.Tool then
+                local held = char:FindFirstChildOfClass("Tool")
+                esp.tool.Visible = true
+                esp.tool.Text = held and held.Name or ""
+            else
+                esp.tool.Visible = false
+            end
+
+            if Config.HP then
+                esp.hpBg.Visible = true
+                esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
+            else
+                esp.hpBg.Visible = false
+            end
+
+            -- Скелет
+            if Config.Skeleton then
+                local connections = esp.isR15 and BONE_CONNECTIONS_R15 or BONE_CONNECTIONS_R6
+                local bones = esp.bones
+
+                if #bones < #connections then
+                    for i = #bones + 1, #connections do
+                        bones[i] = createBoneLine(esp.skeletonFolder)
                     end
                 end
-                
+
                 for i, connection in ipairs(connections) do
                     local part0 = char:FindFirstChild(connection[1])
                     local part1 = char:FindFirstChild(connection[2])
-                    local line = esp.bones[i]
-                    
-                    if part0 and part1 and line then
+                    local line = bones[i]
+
+                    if part0 and part1 then
                         local p0, on0 = Camera:WorldToViewportPoint(part0.Position)
                         local p1, on1 = Camera:WorldToViewportPoint(part1.Position)
-                        
+
                         if on0 and on1 and p0.Z > 0 and p1.Z > 0 then
-                            local from = Vector2.new(p0.X, p0.Y)
-                            local to = Vector2.new(p1.X, p1.Y)
-                            local dist = (to - from).Magnitude
-                            local mid = (from + to) / 2
-                            local angle = math.atan2(to.Y - from.Y, to.X - from.X)
-                            
+                            local dx = p1.X - p0.X
+                            local dy = p1.Y - p0.Y
+                            local dist = (dx * dx + dy * dy) ^ 0.5
+                            local midX = (p0.X + p1.X) * 0.5
+                            local midY = (p0.Y + p1.Y) * 0.5
+
                             line.Visible = true
                             line.BackgroundColor3 = boxColor
-                            line.Size = UDim2.fromOffset(dist, 2)
-                            line.Position = UDim2.fromOffset(mid.X, mid.Y)
-                            line.Rotation = math.deg(angle)
+                            line.Size = UDim2fromOffset(dist, 2)
+                            line.Position = UDim2fromOffset(midX, midY)
+                            line.Rotation = mathdeg(mathatan2(dy, dx))
                         else
                             line.Visible = false
                         end
-                    elseif line then
+                    else
                         line.Visible = false
                     end
                 end
             else
-                for _, line in ipairs(esp.bones) do
-                    line.Visible = false
+                for i = 1, #esp.bones do
+                    esp.bones[i].Visible = false
                 end
             end
         else
             esp.box.Visible = false
-            for _, line in ipairs(esp.bones) do
-                line.Visible = false
+            for i = 1, #esp.bones do
+                esp.bones[i].Visible = false
             end
         end
-        
+
         -- Aimbot
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
-                local d = (Vector2.new(headScreen.X, headScreen.Y) - center).Magnitude
+                local dx = headScreen.X - centerX
+                local dy = headScreen.Y - centerY
+                local d = (dx * dx + dy * dy) ^ 0.5
                 if d < shortest then
                     shortest = d
                     closestTarget = head
@@ -681,9 +782,9 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
+
     if Config.Aimbot and closestTarget then
-        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, closestTarget.Position), 0.2)
+        Camera.CFrame = Camera.CFrame:Lerp(CFramenew(Camera.CFrame.Position, closestTarget.Position), 0.2)
         if tick() - lastShot >= Config.FIRE_RATE then
             lastShot = tick()
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
