@@ -15,12 +15,13 @@ local Config = {
     Chams = true,
     Aimbot = false,
     Fly = false,
-    Noclip = false,
+    NoClip = false,
     FlySpeed = 50,
     FOV = 100,
     FIRE_RATE = 0.1,
 }
 
+-- Клавиши по умолчанию (nil = не назначено)
 local Keybinds = {
     ESP    = nil,
     Box    = nil,
@@ -30,7 +31,7 @@ local Keybinds = {
     Chams  = nil,
     Aimbot = Enum.KeyCode.Q,
     Fly    = Enum.KeyCode.F,
-    Noclip = Enum.KeyCode.V,
+    NoClip = Enum.KeyCode.N,
     Menu   = Enum.KeyCode.Delete,
 }
 -- =============================================
@@ -42,9 +43,10 @@ gui.IgnoreGuiInset = true
 gui.ClipToDeviceSafeArea = false
 gui.Parent = LP:WaitForChild("PlayerGui")
 
+-- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 430)
-main.Position = UDim2.new(0.5, -150, 0.5, -215)
+main.Size = UDim2.fromOffset(300, 440)
+main.Position = UDim2.new(0.5, -150, 0.5, -220)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -79,6 +81,7 @@ close.Font = Enum.Font.Code
 close.TextSize = 14
 close.Parent = main
 
+-- ===== ПУНКТЫ МЕНЮ =====
 local toggles = {}
 local bindingKey = nil
 
@@ -99,15 +102,15 @@ local function makeToggle(y, label, key)
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Parent = main
-    
+
     btn.MouseButton1Click:Connect(function()
         Config[key] = not Config[key]
         btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
         btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
         if key == "Fly" then toggleFly() end
-        if key == "Noclip" then toggleNoclip() end
+        if key == "NoClip" then toggleNoClip() end
     end)
-    
+
     local kb = Instance.new("TextButton")
     kb.Size = UDim2.fromOffset(60, 26)
     kb.Position = UDim2.new(1, -70, 0, y)
@@ -118,20 +121,20 @@ local function makeToggle(y, label, key)
     kb.Font = Enum.Font.Code
     kb.TextSize = 12
     kb.Parent = main
-    
+
     kb.MouseButton1Click:Connect(function()
         bindingKey = key
         kb.Text = "..."
         kb.TextColor3 = Color3.fromRGB(255, 200, 60)
     end)
-    
+
     kb.MouseButton2Click:Connect(function()
         Keybinds[key] = nil
         kb.Text = "—"
         kb.TextColor3 = Color3.fromRGB(120, 120, 120)
         showNotify(string.format("[ %s ]  bind reset", label), Color3.fromRGB(255, 180, 60))
     end)
-    
+
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
@@ -143,9 +146,10 @@ makeToggle(160, "Tool",       "Tool")
 makeToggle(190, "Chams",      "Chams")
 makeToggle(220, "Aimbot",     "Aimbot")
 makeToggle(250, "Fly",        "Fly")
-makeToggle(280, "Noclip",     "Noclip")
+makeToggle(280, "NoClip",     "NoClip")
 makeToggle(310, "Menu Key",   "Menu")
 
+-- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
 notifyGui.Name = "Notify"
 notifyGui.ResetOnSpawn = false
@@ -177,7 +181,7 @@ local notifyToken = 0
 function showNotify(text, color)
     notifyToken = notifyToken + 1
     local myToken = notifyToken
-    
+
     notify.Text = text
     notify.TextColor3 = color
     notifyStroke.Color = color
@@ -185,7 +189,7 @@ function showNotify(text, color)
     notify.TextTransparency = 0
     notify.BackgroundTransparency = 0.2
     notifyStroke.Transparency = 0
-    
+
     task.spawn(function()
         task.wait(1.2)
         if notifyToken ~= myToken then return end
@@ -202,6 +206,7 @@ function showNotify(text, color)
     end)
 end
 
+-- ===== ESP CACHE =====
 local cache = {}
 
 local function createESP(player)
@@ -210,12 +215,12 @@ local function createESP(player)
     box.BorderSizePixel = 0
     box.Visible = false
     box.Parent = gui
-    
+
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(0, 255, 0)
     stroke.Thickness = 1
     stroke.Parent = box
-    
+
     local name = Instance.new("TextLabel")
     name.BackgroundTransparency = 1
     name.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -225,7 +230,7 @@ local function createESP(player)
     name.Size = UDim2.new(1, 0, 0, 16)
     name.Position = UDim2.new(0, 0, -1, -4)
     name.Parent = box
-    
+
     local tool = Instance.new("TextLabel")
     tool.BackgroundTransparency = 1
     tool.TextColor3 = Color3.fromRGB(255, 200, 60)
@@ -235,14 +240,14 @@ local function createESP(player)
     tool.Size = UDim2.new(1, 0, 0, 14)
     tool.Position = UDim2.new(0, 0, 1, 2)
     tool.Parent = box
-    
+
     local hpBg = Instance.new("Frame")
     hpBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     hpBg.BorderSizePixel = 0
     hpBg.Size = UDim2.new(0, 3, 1, 0)
     hpBg.Position = UDim2.new(0, -6, 0, 0)
     hpBg.Parent = box
-    
+
     local hpFill = Instance.new("Frame")
     hpFill.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
     hpFill.BorderSizePixel = 0
@@ -250,7 +255,7 @@ local function createESP(player)
     hpFill.AnchorPoint = Vector2.new(0, 1)
     hpFill.Position = UDim2.new(0, 0, 1, 0)
     hpFill.Parent = hpBg
-    
+
     cache[player] = {
         box = box, stroke = stroke, name = name, tool = tool,
         hpBg = hpBg, hpFill = hpFill, highlight = nil
@@ -286,20 +291,20 @@ local function startFly()
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
-    
+
     hum.PlatformStand = true
-    
+
     flyBodyVel = Instance.new("BodyVelocity")
     flyBodyVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
     flyBodyVel.Velocity = Vector3.zero
     flyBodyVel.Parent = root
-    
+
     flyBodyGyro = Instance.new("BodyGyro")
     flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
     flyBodyGyro.P = 3000
     flyBodyGyro.CFrame = root.CFrame
     flyBodyGyro.Parent = root
-    
+
     flyConn = RunService.RenderStepped:Connect(function()
         if not (flyBodyVel and flyBodyGyro and root.Parent) then return end
         local cam = Camera.CFrame
@@ -310,7 +315,7 @@ local function startFly()
         if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
-        
+
         flyBodyVel.Velocity = move.Magnitude > 0 
             and move.Unit * Config.FlySpeed 
             or Vector3.zero
@@ -328,17 +333,34 @@ function toggleFly()
     end
 end
 
--- ===== NOCLIP =====
-local noclipConn
+-- ===== NOCLIP (POWERFUL) =====
+local noclipConn = nil
 
-local function stopNoclip()
+local function applyNoClip()
+    local char = LP.Character
+    if not char then return end
+
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
+end
+
+local function startNoClip()
+    if noclipConn then return end
+    noclipConn = RunService.Stepped:Connect(applyNoClip)
+    applyNoClip()
+end
+
+local function stopNoClip()
     if noclipConn then
         noclipConn:Disconnect()
         noclipConn = nil
     end
     local char = LP.Character
     if char then
-        for _, part in pairs(char:GetDescendants()) do
+        for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
             end
@@ -346,36 +368,22 @@ local function stopNoclip()
     end
 end
 
-local function startNoclip()
-    stopNoclip()
-    local char = LP.Character
-    if not char then return end
-    
-    noclipConn = RunService.Stepped:Connect(function()
-        local currentChar = LP.Character
-        if not currentChar then return end
-        for _, part in pairs(currentChar:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end)
-end
-
-function toggleNoclip()
-    if Config.Noclip then
-        startNoclip()
+function toggleNoClip()
+    if Config.NoClip then
+        startNoClip()
     else
-        stopNoclip()
+        stopNoClip()
     end
 end
 
+-- ===== РЕСПАВН =====
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
     if Config.Fly then toggleFly() end
-    if Config.Noclip then toggleNoclip() end
+    if Config.NoClip then toggleNoClip() end
 end)
 
+-- ===== ОБНОВЛЕНИЕ КНОПОК =====
 local function refreshToggle(key)
     local t = toggles[key]
     if not t then return end
@@ -385,10 +393,11 @@ local function refreshToggle(key)
         or Color3.fromRGB(180, 180, 180)
 end
 
+-- ===== ВВОД =====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-    
+
     if bindingKey then
         Keybinds[bindingKey] = input.KeyCode
         local kb = toggles[bindingKey].kb
@@ -403,21 +412,21 @@ UIS.InputBegan:Connect(function(input, gp)
         bindingKey = nil
         return
     end
-    
+
     for key, bind in pairs(Keybinds) do
         if bind and input.KeyCode == bind then
             if key == "Menu" then
                 main.Visible = not main.Visible
                 return
             end
-            
+
             if Config[key] ~= nil then
                 Config[key] = not Config[key]
                 refreshToggle(key)
-                
+
                 if key == "Fly" then toggleFly() end
-                if key == "Noclip" then toggleNoclip() end
-                
+                if key == "NoClip" then toggleNoClip() end
+
                 showNotify(
                     string.format("[ %s: %s ]", toggles[key].label, Config[key] and "ON" or "OFF"),
                     Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80)
@@ -428,35 +437,37 @@ UIS.InputBegan:Connect(function(input, gp)
     end
 end)
 
+-- ===== КНОПКА ЗАКРЫТИЯ =====
 close.MouseButton1Click:Connect(function()
     main.Visible = false
 end)
 
+-- ===== ОСНОВНОЙ ЦИКЛ =====
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
     local vpSize = Camera.ViewportSize
     local center = Vector2.new(vpSize.X/2, vpSize.Y/2)
     local closestTarget, shortest = nil, Config.FOV
-    
+
     for player, esp in pairs(cache) do
         local char = player.Character
         local head = char and char:FindFirstChild("Head")
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
-        
+
         if esp.highlight and (not char or esp.highlight.Parent ~= char) then
             esp.highlight:Destroy()
             esp.highlight = nil
         end
-        
+
         local alive = head and root and hum and hum.Health > 0
-        
+
         if not alive then
             esp.box.Visible = false
             continue
         end
-        
+
         if Config.ESP and Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
@@ -476,32 +487,32 @@ RunService.RenderStepped:Connect(function()
                 esp.highlight = nil
             end
         end
-        
+
         local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
         local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
-        
+
         local visible = topOn and botOn
             and topPos.Z > 0 and botPos.Z > 0
             and topPos.X > -50 and topPos.X < vpSize.X + 50
             and topPos.Y > -50 and topPos.Y < vpSize.Y + 50
             and botPos.Y > -50 and botPos.Y < vpSize.Y + 50
-        
+
         if visible then
             local height = math.abs(botPos.Y - topPos.Y)
             local width = height * 0.55
-            
+
             esp.box.Visible = Config.ESP and Config.Box
             esp.box.Position = UDim2.fromOffset(topPos.X - width/2, topPos.Y)
             esp.box.Size = UDim2.fromOffset(width, height)
-            
+
             esp.name.Visible = Config.ESP and Config.Name
             local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
             esp.name.Text = string.format("%s [%dm]", player.Name, dist)
-            
+
             esp.tool.Visible = Config.ESP and Config.Tool
             local held = char:FindFirstChildOfClass("Tool")
             esp.tool.Text = held and held.Name or ""
-            
+
             esp.hpBg.Visible = Config.ESP and Config.HP
             local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
@@ -513,7 +524,7 @@ RunService.RenderStepped:Connect(function()
         else
             esp.box.Visible = false
         end
-        
+
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
@@ -525,7 +536,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
     end
-    
+
     if Config.Aimbot and closestTarget then
         Camera.CFrame = Camera.CFrame:Lerp(
             CFrame.new(Camera.CFrame.Position, closestTarget.Position), 0.2
