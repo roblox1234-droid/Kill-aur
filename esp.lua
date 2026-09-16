@@ -866,5 +866,3 @@ local function makeSlider(page, label, min, max, default, callback)
         end
     end)
 end
-
--- З
