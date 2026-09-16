@@ -18,11 +18,19 @@ local Config = {
     FlySpeed = 50,
     FOV = 100,
     FIRE_RATE = 0.1,
-    Keybinds = {
-        Aimbot = Enum.KeyCode.Q,
-        Fly = Enum.KeyCode.F,
-        Menu = Enum.KeyCode.Delete,
-    },
+}
+
+-- Клавиши по умолчанию (nil = не назначено)
+local Keybinds = {
+    ESP    = nil,
+    Box    = nil,
+    Name   = nil,
+    HP     = nil,
+    Tool   = nil,
+    Chams  = nil,
+    Aimbot = Enum.KeyCode.Q,
+    Fly    = Enum.KeyCode.F,
+    Menu   = Enum.KeyCode.Delete,
 }
 -- =============================================
 
@@ -35,8 +43,8 @@ gui.Parent = LP:WaitForChild("PlayerGui")
 
 -- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(260, 350)
-main.Position = UDim2.new(0.5, -130, 0.5, -175)
+main.Size = UDim2.fromOffset(300, 400)
+main.Position = UDim2.new(0.5, -150, 0.5, -200)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -75,9 +83,15 @@ close.Parent = main
 local toggles = {}
 local bindingKey = nil
 
+local function getBindText(key)
+    local kb = Keybinds[key]
+    return kb and kb.Name or "—"
+end
+
 local function makeToggle(y, label, key)
+    -- Кнопка вкл/выкл
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -70, 0, 26)
+    btn.Size = UDim2.new(1, -80, 0, 26)
     btn.Position = UDim2.fromOffset(10, y)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     btn.BorderSizePixel = 0
@@ -95,40 +109,45 @@ local function makeToggle(y, label, key)
         if key == "Fly" then toggleFly() end
     end)
     
-    toggles[key] = {btn = btn, label = label}
+    -- Кнопка смены клавиши
+    local kb = Instance.new("TextButton")
+    kb.Size = UDim2.fromOffset(60, 26)
+    kb.Position = UDim2.new(1, -70, 0, y)
+    kb.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    kb.BorderSizePixel = 0
+    kb.Text = getBindText(key)
+    kb.TextColor3 = Keybinds[key] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(120, 120, 120)
+    kb.Font = Enum.Font.Code
+    kb.TextSize = 12
+    kb.Parent = main
     
-    -- Кнопка смены клавиши (для Aimbot, Fly, Menu)
-    if Config.Keybinds[key] then
-        local kb = Instance.new("TextButton")
-        kb.Size = UDim2.fromOffset(50, 26)
-        kb.Position = UDim2.fromOffset(200, y)
-        kb.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-        kb.BorderSizePixel = 0
-        kb.Text = Config.Keybinds[key].Name
-        kb.TextColor3 = Color3.fromRGB(255, 255, 255)
-        kb.Font = Enum.Font.Code
-        kb.TextSize = 12
-        kb.Parent = main
-        
-        kb.MouseButton1Click:Connect(function()
-            bindingKey = key
-            kb.Text = "..."
-            kb.TextColor3 = Color3.fromRGB(255, 200, 60)
-        end)
-        
-        toggles[key].kb = kb
-    end
+    kb.MouseButton1Click:Connect(function()
+        bindingKey = key
+        kb.Text = "..."
+        kb.TextColor3 = Color3.fromRGB(255, 200, 60)
+    end)
+    
+    -- ПКМ по кнопке клавиши = сброс бинда
+    kb.MouseButton2Click:Connect(function()
+        Keybinds[key] = nil
+        kb.Text = "—"
+        kb.TextColor3 = Color3.fromRGB(120, 120, 120)
+        showNotify(string.format("[ %s ]  bind reset", label), Color3.fromRGB(255, 180, 60))
+    end)
+    
+    toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
-makeToggle(40, "ESP Master", "ESP")
-makeToggle(70, "Box", "Box")
-makeToggle(100, "Name + Dist", "Name")
-makeToggle(130, "HP Bar", "HP")
-makeToggle(160, "Tool", "Tool")
-makeToggle(190, "Chams", "Chams")
-makeToggle(220, "Aimbot", "Aimbot")
-makeToggle(250, "Fly", "Fly")
-makeToggle(280, "Menu Key", "Menu")
+-- Размещение: сначала ESP-функции, потом Aimbot/Fly/Menu
+makeToggle(40,  "ESP Master", "ESP")
+makeToggle(70,  "Box",        "Box")
+makeToggle(100, "Name + Dist","Name")
+makeToggle(130, "HP Bar",     "HP")
+makeToggle(160, "Tool",       "Tool")
+makeToggle(190, "Chams",      "Chams")
+makeToggle(220, "Aimbot",     "Aimbot")
+makeToggle(250, "Fly",        "Fly")
+makeToggle(280, "Menu Key",   "Menu")
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
@@ -159,7 +178,7 @@ notifyStroke.Parent = notify
 
 local notifyToken = 0
 
-local function showNotify(text, color)
+function showNotify(text, color)
     notifyToken = notifyToken + 1
     local myToken = notifyToken
     
@@ -268,7 +287,6 @@ end
 
 local function startFly()
     stopFly()
-    
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -289,7 +307,6 @@ local function startFly()
     
     flyConn = RunService.RenderStepped:Connect(function()
         if not (flyBodyVel and flyBodyGyro and root.Parent) then return end
-        
         local cam = Camera.CFrame
         local move = Vector3.zero
         if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.LookVector end
@@ -321,7 +338,7 @@ LP.CharacterAdded:Connect(function()
     if Config.Fly then toggleFly() end
 end)
 
--- ===== ОБНОВЛЕНИЕ ВИЗУАЛА КНОПОК =====
+-- ===== ОБНОВЛЕНИЕ КНОПОК =====
 local function refreshToggle(key)
     local t = toggles[key]
     if not t then return end
@@ -336,49 +353,45 @@ UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
     
-    -- Режим назначения клавиши
+    -- Режим назначения
     if bindingKey then
-        Config.Keybinds[bindingKey] = input.KeyCode
+        Keybinds[bindingKey] = input.KeyCode
         local kb = toggles[bindingKey].kb
         if kb then
             kb.Text = input.KeyCode.Name
             kb.TextColor3 = Color3.fromRGB(255, 255, 255)
         end
         showNotify(
-            string.format("[ %s ]  bind -> %s", bindingKey, input.KeyCode.Name),
+            string.format("[ %s ]  bind -> %s", toggles[bindingKey].label, input.KeyCode.Name),
             Color3.fromRGB(0, 200, 255)
         )
         bindingKey = nil
         return
     end
     
-    -- Меню
-    if input.KeyCode == Config.Keybinds.Menu then
-        main.Visible = not main.Visible
-        return
-    end
-    
-    -- Aimbot
-    if input.KeyCode == Config.Keybinds.Aimbot then
-        Config.Aimbot = not Config.Aimbot
-        refreshToggle("Aimbot")
-        showNotify(
-            Config.Aimbot and "[ Aimbot: ON ]" or "[ Aimbot: OFF ]",
-            Config.Aimbot and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80)
-        )
-        return
-    end
-    
-    -- Fly
-    if input.KeyCode == Config.Keybinds.Fly then
-        Config.Fly = not Config.Fly
-        refreshToggle("Fly")
-        toggleFly()
-        showNotify(
-            Config.Fly and "[ Fly: ON ]" or "[ Fly: OFF ]",
-            Config.Fly and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80)
-        )
-        return
+    -- Проверка всех биндов
+    for key, bind in pairs(Keybinds) do
+        if bind and input.KeyCode == bind then
+            -- Меню
+            if key == "Menu" then
+                main.Visible = not main.Visible
+                return
+            end
+            
+            -- Обычные тогглы
+            if Config[key] ~= nil then
+                Config[key] = not Config[key]
+                refreshToggle(key)
+                
+                if key == "Fly" then toggleFly() end
+                
+                showNotify(
+                    string.format("[ %s: %s ]", toggles[key].label, Config[key] and "ON" or "OFF"),
+                    Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80)
+                )
+            end
+            return
+        end
     end
 end)
 
@@ -413,7 +426,6 @@ RunService.RenderStepped:Connect(function()
             continue
         end
         
-        -- Chams
         if Config.ESP and Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
