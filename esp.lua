@@ -1,14 +1,34 @@
--- LocalScript в StarterPlayerScripts (для СВОЕЙ игры)
--- =====================================================
+-- ============================================
+-- CHEAT SCRIPT FOR EXECUTOR
+-- ============================================
 
 local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+
+if not LP then
+    repeat task.wait() until Players.LocalPlayer
+    LP = Players.LocalPlayer
+end
+
+if _G.MyCheatLoaded then
+    warn("[CHEAT] Уже загружено!")
+    return
+end
+_G.MyCheatLoaded = true
+
+for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
+    if g.Name == "CheatGUI" or g.Name == "Notify" then
+        g:Destroy()
+    end
+end
+
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
-local LP = Players.LocalPlayer
 local Stats = game:GetService("Stats")
 local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local pairs = pairs
 local ipairs = ipairs
@@ -18,10 +38,6 @@ local mathfloor = math.floor
 local mathclamp = math.clamp
 local tick = tick
 local CFramenew = CFrame.new
-
--- ===== ЗАЩИТА ОТ ПОВТОРНОГО ЗАПУСКА =====
-if _G.MyCheatLoaded then return end
-_G.MyCheatLoaded = true
 
 -- ================= НАСТРОЙКИ =================
 local Config = {
@@ -51,6 +67,8 @@ local Config = {
     -- Misc
     AntiAFK = true,
     Fullbright = false,
+    FPSBoost = false,
+    AutoReload = false,
 }
 
 local Keybinds = {
@@ -71,6 +89,8 @@ local Keybinds = {
     BunnyHop    = Enum.KeyCode.B,
     AntiAFK     = nil,
     Fullbright  = nil,
+    FPSBoost    = nil,
+    AutoReload  = Enum.KeyCode.R,
     Menu        = Enum.KeyCode.Delete,
 }
 
@@ -84,7 +104,7 @@ gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- ===== FPS + PING =====
+-- FPS + PING
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.fromOffset(120, 40)
 infoLabel.Position = UDim2.new(1, -130, 0, 10)
@@ -116,7 +136,7 @@ local function getRainbowColor()
     )
 end
 
--- ===== ГЛАВНОЕ ОКНО =====
+-- ГЛАВНОЕ ОКНО
 local main = Instance.new("Frame")
 main.Size = UDim2.fromOffset(320, 480)
 main.Position = UDim2.new(0.5, -160, 0.5, -240)
@@ -153,7 +173,7 @@ close.TextSize = 14
 close.ZIndex = 12
 close.Parent = main
 
--- ===== ВКЛАДКИ =====
+-- ВКЛАДКИ
 local tabsBar = Instance.new("Frame")
 tabsBar.Size = UDim2.new(1, 0, 0, 30)
 tabsBar.Position = UDim2.fromOffset(0, 30)
@@ -169,10 +189,8 @@ tabsLayout.Parent = tabsBar
 
 local pages = {}
 local tabButtons = {}
-local activeTab = nil
 
 local function selectTab(name)
-    activeTab = name
     for tabName, page in pairs(pages) do
         page.Visible = (tabName == name)
     end
@@ -231,12 +249,12 @@ local function createTab(name, displayName)
     end)
 end
 
-createTab("Visual",   "Visual")
-createTab("Aimbot",   "Aimbot")
+createTab("Visual", "Visual")
+createTab("Aimbot", "Aimbot")
 createTab("Movement", "Move")
-createTab("Misc",     "Misc")
+createTab("Misc", "Misc")
 
--- ===== УВЕДОМЛЕНИЯ (объявлены ДО использования) =====
+-- УВЕДОМЛЕНИЯ
 local notifyGui = Instance.new("ScreenGui")
 notifyGui.Name = "Notify"
 notifyGui.ResetOnSpawn = false
@@ -295,7 +313,183 @@ function showNotify(text, color)
     end)
 end
 
--- ===== ФУНКЦИИ ДВИЖЕНИЯ (объявлены ДО меню) =====
+-- FOV CIRCLE
+local fovCircle = Instance.new("Frame")
+fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+fovCircle.BackgroundTransparency = 1
+fovCircle.BorderSizePixel = 0
+fovCircle.Visible = false
+fovCircle.ZIndex = 5
+fovCircle.Parent = gui
+
+local fovStroke = Instance.new("UIStroke")
+fovStroke.Color = Color3.fromRGB(0, 255, 150)
+fovStroke.Thickness = 2
+fovStroke.Transparency = 0.2
+fovStroke.Parent = fovCircle
+Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
+
+-- ПРОВЕРКА ВИДИМОСТИ
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function isVisible(fromPos, toPos, characterToIgnore)
+    rayParams.FilterDescendantsInstances = {LP.Character, characterToIgnore}
+    local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
+    return result == nil or result.Instance:IsDescendantOf(characterToIgnore)
+end
+
+-- ESP
+local cache = {}
+
+local function createESP(player)
+    local box = Instance.new("Frame")
+    box.BackgroundTransparency = 1
+    box.BorderSizePixel = 0
+    box.Visible = false
+    box.ZIndex = 3
+    box.Parent = gui
+
+    local corners = {}
+    local function makeCorner(ax, ay, px, py)
+        local f1 = Instance.new("Frame")
+        f1.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+        f1.BorderSizePixel = 0
+        f1.Size = UDim2fromOffset(9, 2)
+        f1.AnchorPoint = Vector2.new(ax, ay)
+        f1.Position = UDim2.new(px, 0, py, 0)
+        f1.ZIndex = 4
+        f1.Parent = box
+
+        local f2 = Instance.new("Frame")
+        f2.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+        f2.BorderSizePixel = 0
+        f2.Size = UDim2fromOffset(2, 9)
+        f2.AnchorPoint = Vector2.new(ax, ay)
+        f2.Position = UDim2.new(px, 0, py, 0)
+        f2.ZIndex = 4
+        f2.Parent = box
+        return {f1, f2}
+    end
+
+    corners.TL = makeCorner(0, 0, 0, 0)
+    corners.TR = makeCorner(1, 0, 1, 0)
+    corners.BL = makeCorner(0, 1, 0, 1)
+    corners.BR = makeCorner(1, 1, 1, 1)
+
+    local name = Instance.new("TextLabel")
+    name.BackgroundTransparency = 1
+    name.TextColor3 = Color3.fromRGB(255, 255, 255)
+    name.TextStrokeTransparency = 0.35
+    name.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    name.TextSize = 14
+    name.Font = Enum.Font.GothamBold
+    name.Size = UDim2.new(1, 0, 0, 18)
+    name.Position = UDim2.new(0, 0, 0, -22)
+    name.TextXAlignment = Enum.TextXAlignment.Center
+    name.ZIndex = 4
+    name.Parent = box
+
+    local tool = Instance.new("TextLabel")
+    tool.BackgroundTransparency = 1
+    tool.TextColor3 = Color3.fromRGB(255, 210, 80)
+    tool.TextStrokeTransparency = 0.35
+    tool.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    tool.TextSize = 12
+    tool.Font = Enum.Font.Gotham
+    tool.Size = UDim2.new(1, 0, 0, 16)
+    tool.Position = UDim2.new(0, 0, 1, 5)
+    tool.TextXAlignment = Enum.TextXAlignment.Center
+    tool.ZIndex = 4
+    tool.Parent = box
+
+    local hpBg = Instance.new("Frame")
+    hpBg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    hpBg.BackgroundTransparency = 0.25
+    hpBg.BorderSizePixel = 0
+    hpBg.Size = UDim2.new(0, 4, 1, 0)
+    hpBg.Position = UDim2.new(0, -11, 0, 0)
+    hpBg.ZIndex = 4
+    hpBg.Parent = box
+    Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
+
+    local hpFill = Instance.new("Frame")
+    hpFill.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
+    hpFill.BorderSizePixel = 0
+    hpFill.Size = UDim2.new(1, 0, 1, 0)
+    hpFill.AnchorPoint = Vector2.new(0, 1)
+    hpFill.Position = UDim2.new(0, 0, 1, 0)
+    hpFill.ZIndex = 5
+    hpFill.Parent = hpBg
+    Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
+
+    local tracer = Instance.new("Frame")
+    tracer.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+    tracer.BorderSizePixel = 0
+    tracer.AnchorPoint = Vector2.new(0.5, 0)
+    tracer.Size = UDim2.fromOffset(1, 0)
+    tracer.Visible = false
+    tracer.ZIndex = 3
+    tracer.Parent = gui
+
+    cache[player] = {
+        box = box, corners = corners, name = name, tool = tool,
+        hpBg = hpBg, hpFill = hpFill, highlight = nil,
+        tracer = tracer,
+        head = nil, root = nil, humanoid = nil, char = nil,
+    }
+end
+
+local function removeESP(player)
+    local data = cache[player]
+    if data then
+        if data.highlight then data.highlight:Destroy() end
+        if data.tracer then data.tracer:Destroy() end
+        data.box:Destroy()
+        cache[player] = nil
+    end
+end
+
+local function updateCharacterCache(player)
+    local data = cache[player]
+    if not data then return end
+    local char = player.Character
+    if not char then
+        data.char = nil
+        data.head = nil
+        data.root = nil
+        data.humanoid = nil
+        return
+    end
+    data.char = char
+    data.head = char:FindFirstChild("Head")
+    data.root = char:FindFirstChild("HumanoidRootPart")
+    data.humanoid = char:FindFirstChildOfClass("Humanoid")
+end
+
+Players.PlayerAdded:Connect(function(player)
+    if player == LP then return end
+    createESP(player)
+    player.CharacterAdded:Connect(function()
+        task.wait(0.3)
+        updateCharacterCache(player)
+    end)
+end)
+
+Players.PlayerRemoving:Connect(removeESP)
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= LP then
+        createESP(player)
+        updateCharacterCache(player)
+        player.CharacterAdded:Connect(function()
+            task.wait(0.3)
+            updateCharacterCache(player)
+        end)
+    end
+end
+
 -- FLY
 local flyBodyVel, flyBodyGyro, flyConn
 
@@ -476,7 +670,53 @@ local function toggleFullbright()
     end
 end
 
--- ===== МЕНЮ: ТОГГЛЫ =====
+-- AUTO-RELOAD
+local autoReloadConn = nil
+
+local function startAutoReload()
+    if autoReloadConn then return end
+    autoReloadConn = RunService.Heartbeat:Connect(function()
+        local char = LP.Character
+        if not char then return end
+        local tool = char:FindFirstChildOfClass("Tool")
+        if not tool then return end
+
+        local ammo = tool:GetAttribute("Ammo") 
+            or tool:GetAttribute("CurrentAmmo")
+            or tool:GetAttribute("AmmoCount")
+
+        if ammo and ammo <= 0 then
+            pcall(function()
+                tool:Activate()
+            end)
+        end
+
+        local remote = ReplicatedStorage:FindFirstChild("Reload")
+            or ReplicatedStorage:FindFirstChild("ReloadEvent")
+        if remote and remote:IsA("RemoteEvent") then
+            pcall(function()
+                remote:FireServer()
+            end)
+        end
+    end)
+end
+
+local function stopAutoReload()
+    if autoReloadConn then
+        autoReloadConn:Disconnect()
+        autoReloadConn = nil
+    end
+end
+
+local function toggleAutoReload()
+    if Config.AutoReload then
+        startAutoReload()
+    else
+        stopAutoReload()
+    end
+end
+
+-- ТОГГЛЫ
 local toggles = {}
 local bindingKey = nil
 
@@ -509,6 +749,7 @@ local function makeToggle(page, label, key)
         if key == "BunnyHop" then toggleBunnyHop() end
         if key == "AntiAFK" then toggleAntiAFK() end
         if key == "Fullbright" then toggleFullbright() end
+        if key == "AutoReload" then toggleAutoReload() end
     end)
 
     local kb = Instance.new("TextButton")
@@ -538,7 +779,7 @@ local function makeToggle(page, label, key)
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
--- ===== МЕНЮ: СЛАЙДЕРЫ =====
+-- СЛАЙДЕРЫ
 local function makeSlider(page, label, min, max, default, callback)
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 0, 44)
@@ -624,448 +865,4 @@ local function makeSlider(page, label, min, max, default, callback)
     end)
 
     UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-end
-
--- ===== ЗАПОЛНЕНИЕ ВКЛАДОК =====
-
--- Visual
-makeToggle(pages.Visual, "ESP Master",   "ESP")
-makeToggle(pages.Visual, "Box",          "Box")
-makeToggle(pages.Visual, "Name + Dist",  "Name")
-makeToggle(pages.Visual, "HP Bar",       "HP")
-makeToggle(pages.Visual, "Tool",         "Tool")
-makeToggle(pages.Visual, "Chams",        "Chams")
-makeToggle(pages.Visual, "Visible Only", "VisibleOnly")
-makeToggle(pages.Visual, "Tracers",      "Tracers")
-
--- Aimbot
-makeToggle(pages.Aimbot, "Aimbot",   "Aimbot")
-makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
-makeSlider(pages.Aimbot, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
-makeSlider(pages.Aimbot, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
-
--- Movement
-makeToggle(pages.Movement, "Fly",          "Fly")
-makeToggle(pages.Movement, "Noclip",       "Noclip")
-makeToggle(pages.Movement, "Speed Hack",   "SpeedHack")
-makeToggle(pages.Movement, "Infinite Jump","InfiniteJump")
-makeToggle(pages.Movement, "Bunny Hop",    "BunnyHop")
-makeSlider(pages.Movement, "Fly Speed", 10, 500, Config.FlySpeed, function(v) Config.FlySpeed = v end)
-makeSlider(pages.Movement, "Walk Speed", 16, 200, Config.WalkSpeed, function(v)
-    Config.WalkSpeed = v
-    if Config.SpeedHack then
-        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = v end
-    end
-end)
-
--- Misc
-makeToggle(pages.Misc, "Anti-AFK",   "AntiAFK")
-makeToggle(pages.Misc, "Fullbright", "Fullbright")
-makeToggle(pages.Misc, "Menu Key",   "Menu")
-
-selectTab("Visual")
-
--- ===== FOV CIRCLE =====
-local fovCircle = Instance.new("Frame")
-fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
-fovCircle.BackgroundTransparency = 1
-fovCircle.BorderSizePixel = 0
-fovCircle.Visible = false
-fovCircle.ZIndex = 5
-fovCircle.Parent = gui
-
-local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = Color3.fromRGB(0, 255, 150)
-fovStroke.Thickness = 2
-fovStroke.Transparency = 0.2
-fovStroke.Parent = fovCircle
-Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
-
--- ===== ПРОВЕРКА ВИДИМОСТИ =====
-local rayParams = RaycastParams.new()
-rayParams.FilterType = Enum.RaycastFilterType.Exclude
-
-local function isVisible(fromPos, toPos, characterToIgnore)
-    rayParams.FilterDescendantsInstances = {LP.Character, characterToIgnore}
-    local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
-    return result == nil or result.Instance:IsDescendantOf(characterToIgnore)
-end
-
--- ===== ESP =====
-local cache = {}
-
-local function createESP(player)
-    local box = Instance.new("Frame")
-    box.BackgroundTransparency = 1
-    box.BorderSizePixel = 0
-    box.Visible = false
-    box.ZIndex = 3
-    box.Parent = gui
-
-    local corners = {}
-    local function makeCorner(ax, ay, px, py)
-        local f1 = Instance.new("Frame")
-        f1.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-        f1.BorderSizePixel = 0
-        f1.Size = UDim2fromOffset(9, 2)
-        f1.AnchorPoint = Vector2.new(ax, ay)
-        f1.Position = UDim2.new(px, 0, py, 0)
-        f1.ZIndex = 4
-        f1.Parent = box
-
-        local f2 = Instance.new("Frame")
-        f2.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-        f2.BorderSizePixel = 0
-        f2.Size = UDim2fromOffset(2, 9)
-        f2.AnchorPoint = Vector2.new(ax, ay)
-        f2.Position = UDim2.new(px, 0, py, 0)
-        f2.ZIndex = 4
-        f2.Parent = box
-        return {f1, f2}
-    end
-
-    corners.TL = makeCorner(0, 0, 0, 0)
-    corners.TR = makeCorner(1, 0, 1, 0)
-    corners.BL = makeCorner(0, 1, 0, 1)
-    corners.BR = makeCorner(1, 1, 1, 1)
-
-    local name = Instance.new("TextLabel")
-    name.BackgroundTransparency = 1
-    name.TextColor3 = Color3.fromRGB(255, 255, 255)
-    name.TextStrokeTransparency = 0.35
-    name.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    name.TextSize = 14
-    name.Font = Enum.Font.GothamBold
-    name.Size = UDim2.new(1, 0, 0, 18)
-    name.Position = UDim2.new(0, 0, 0, -22)
-    name.TextXAlignment = Enum.TextXAlignment.Center
-    name.ZIndex = 4
-    name.Parent = box
-
-    local tool = Instance.new("TextLabel")
-    tool.BackgroundTransparency = 1
-    tool.TextColor3 = Color3.fromRGB(255, 210, 80)
-    tool.TextStrokeTransparency = 0.35
-    tool.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    tool.TextSize = 12
-    tool.Font = Enum.Font.Gotham
-    tool.Size = UDim2.new(1, 0, 0, 16)
-    tool.Position = UDim2.new(0, 0, 1, 5)
-    tool.TextXAlignment = Enum.TextXAlignment.Center
-    tool.ZIndex = 4
-    tool.Parent = box
-
-    local hpBg = Instance.new("Frame")
-    hpBg.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    hpBg.BackgroundTransparency = 0.25
-    hpBg.BorderSizePixel = 0
-    hpBg.Size = UDim2.new(0, 4, 1, 0)
-    hpBg.Position = UDim2.new(0, -11, 0, 0)
-    hpBg.ZIndex = 4
-    hpBg.Parent = box
-    Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
-
-    local hpFill = Instance.new("Frame")
-    hpFill.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
-    hpFill.BorderSizePixel = 0
-    hpFill.Size = UDim2.new(1, 0, 1, 0)
-    hpFill.AnchorPoint = Vector2.new(0, 1)
-    hpFill.Position = UDim2.new(0, 0, 1, 0)
-    hpFill.ZIndex = 5
-    hpFill.Parent = hpBg
-    Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
-
-    local tracer = Instance.new("Frame")
-    tracer.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-    tracer.BorderSizePixel = 0
-    tracer.AnchorPoint = Vector2.new(0.5, 0)
-    tracer.Size = UDim2.fromOffset(1, 0)
-    tracer.Visible = false
-    tracer.ZIndex = 3
-    tracer.Parent = gui
-
-    cache[player] = {
-        box = box, corners = corners, name = name, tool = tool,
-        hpBg = hpBg, hpFill = hpFill, highlight = nil,
-        tracer = tracer,
-        head = nil, root = nil, humanoid = nil, char = nil,
-    }
-end
-
-local function removeESP(player)
-    local data = cache[player]
-    if data then
-        if data.highlight then data.highlight:Destroy() end
-        if data.tracer then data.tracer:Destroy() end
-        data.box:Destroy()
-        cache[player] = nil
-    end
-end
-
-local function updateCharacterCache(player)
-    local data = cache[player]
-    if not data then return end
-    local char = player.Character
-    if not char then
-        data.char = nil
-        data.head = nil
-        data.root = nil
-        data.humanoid = nil
-        return
-    end
-    data.char = char
-    data.head = char:FindFirstChild("Head")
-    data.root = char:FindFirstChild("HumanoidRootPart")
-    data.humanoid = char:FindFirstChildOfClass("Humanoid")
-end
-
-Players.PlayerAdded:Connect(function(player)
-    if player == LP then return end
-    createESP(player)
-    player.CharacterAdded:Connect(function()
-        task.wait(0.3)
-        updateCharacterCache(player)
-    end)
-end)
-
-Players.PlayerRemoving:Connect(removeESP)
-
-for _, player in ipairs(Players:GetPlayers()) do
-    if player ~= LP then
-        createESP(player)
-        updateCharacterCache(player)
-        player.CharacterAdded:Connect(function()
-            task.wait(0.3)
-            updateCharacterCache(player)
-        end)
-    end
-end
-
--- ===== ВВОД =====
-local function refreshToggle(key)
-    local t = toggles[key]
-    if not t then return end
-    t.btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", t.label)
-    t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
-end
-
-UIS.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-
-    if bindingKey then
-        Keybinds[bindingKey] = input.KeyCode
-        local kb = toggles[bindingKey].kb
-        if kb then
-            kb.Text = input.KeyCode.Name
-            kb.TextColor3 = Color3.fromRGB(255, 255, 255)
-        end
-        bindingKey = nil
-        return
-    end
-
-    for key, bind in pairs(Keybinds) do
-        if bind and input.KeyCode == bind then
-            if key == "Menu" then
-                main.Visible = not main.Visible
-                return
-            end
-            if Config[key] ~= nil then
-                Config[key] = not Config[key]
-                refreshToggle(key)
-                if key == "Fly" then toggleFly() end
-                if key == "Noclip" then toggleNoclip() end
-                if key == "SpeedHack" then toggleSpeedHack() end
-                if key == "InfiniteJump" then toggleInfiniteJump() end
-                if key == "BunnyHop" then toggleBunnyHop() end
-                if key == "AntiAFK" then toggleAntiAFK() end
-                if key == "Fullbright" then toggleFullbright() end
-            end
-            return
-        end
-    end
-end)
-
-close.MouseButton1Click:Connect(function()
-    main.Visible = false
-end)
-
--- ===== РЕСПАВН =====
-LP.CharacterAdded:Connect(function()
-    task.wait(0.5)
-    if Config.Fly then toggleFly() end
-    if Config.Noclip then toggleNoclip() end
-    if Config.SpeedHack then toggleSpeedHack() end
-    if Config.InfiniteJump then toggleInfiniteJump() end
-    if Config.BunnyHop then toggleBunnyHop() end
-end)
-
--- ===== ОСНОВНОЙ ЦИКЛ =====
-local lastShot = 0
-
-RunService.RenderStepped:Connect(function()
-    -- FPS + Ping
-    infoLabel.TextColor3 = getRainbowColor()
-    frames += 1
-    if tick() - lastTime >= 1 then
-        fps = frames
-        frames = 0
-        lastTime = tick()
-        local ping = 0
-        pcall(function()
-            ping = mathfloor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
-        end)
-        infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
-    end
-
-    -- FOV Circle
-    if Config.ShowFOV and Config.Aimbot then
-        local diameter = Config.FOV * 2
-        fovCircle.Size = UDim2fromOffset(diameter, diameter)
-        fovCircle.Visible = true
-    else
-        fovCircle.Visible = false
-    end
-
-    if not Config.ESP and not Config.Aimbot then return end
-
-    local vpSize = Camera.ViewportSize
-    local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
-    local closestTarget, shortest = nil, Config.FOV
-    local camPos = Camera.CFrame.Position
-
-    for player, esp in pairs(cache) do
-        if not esp.char or not esp.char.Parent then
-            updateCharacterCache(player)
-        end
-
-        local head = esp.head
-        local root = esp.root
-        local hum = esp.humanoid
-        local char = esp.char
-
-        if not (head and root and hum and hum.Health > 0) then
-            esp.box.Visible = false
-            if esp.tracer then esp.tracer.Visible = false end
-            continue
-        end
-
-        if Config.Chams then
-            if not esp.highlight or esp.highlight.Parent ~= char then
-                if esp.highlight then esp.highlight:Destroy() end
-                local hl = Instance.new("Highlight")
-                hl.FillColor = Color3.fromRGB(255, 50, 50)
-                hl.FillTransparency = 0.55
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.OutlineTransparency = 0
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Adornee = char
-                hl.Parent = char
-                esp.highlight = hl
-            end
-        elseif esp.highlight then
-            esp.highlight:Destroy()
-            esp.highlight = nil
-        end
-
-        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3new(0, 0.9, 0))
-        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3new(0, 3.1, 0))
-        local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
-
-        local canSee = true
-        if Config.VisibleOnly then
-            canSee = isVisible(camPos, head.Position, char)
-        end
-
-        local visible = onScreen and canSee
-
-        if visible and Config.ESP then
-            local height = math.abs(botPos.Y - topPos.Y)
-            local width = height * 0.55
-
-            esp.box.Visible = Config.Box
-            esp.box.Position = UDim2fromOffset(topPos.X - width * 0.5, topPos.Y)
-            esp.box.Size = UDim2fromOffset(width, height)
-
-            local ratio = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
-            local boxColor = ratio > 0.6 and Color3.fromRGB(0, 255, 140)
-                or ratio > 0.3 and Color3.fromRGB(255, 220, 50)
-                or Color3.fromRGB(255, 70, 70)
-
-            for _, group in pairs(esp.corners) do
-                group[1].BackgroundColor3 = boxColor
-                group[2].BackgroundColor3 = boxColor
-            end
-
-            if Config.Name then
-                esp.name.Visible = true
-                local dist = mathfloor((camPos - root.Position).Magnitude)
-                esp.name.Text = player.Name .. "  ·  " .. dist .. "m"
-            else
-                esp.name.Visible = false
-            end
-
-            if Config.Tool then
-                local held = char:FindFirstChildOfClass("Tool")
-                esp.tool.Visible = true
-                esp.tool.Text = held and held.Name or ""
-            else
-                esp.tool.Visible = false
-            end
-
-            if Config.HP then
-                esp.hpBg.Visible = true
-                esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
-            else
-                esp.hpBg.Visible = false
-            end
-
-            if Config.Tracers and esp.tracer then
-                esp.tracer.Visible = true
-                esp.tracer.Position = UDim2.new(0.5, 0, 1, 0)
-                esp.tracer.Size = UDim2.fromOffset(1, (botPos.Y - vpSize.Y) * -1)
-                esp.tracer.BackgroundColor3 = boxColor
-            elseif esp.tracer then
-                esp.tracer.Visible = false
-            end
-        else
-            esp.box.Visible = false
-            if esp.tracer then esp.tracer.Visible = false end
-        end
-
-        if Config.Aimbot then
-            local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
-            if headOn and headScreen.Z > 0 then
-                local canAim = true
-                if Config.VisibleOnly then
-                    canAim = isVisible(camPos, head.Position, char)
-                end
-                if canAim then
-                    local dx = headScreen.X - centerX
-                    local dy = headScreen.Y - centerY
-                    local d = (dx * dx + dy * dy) ^ 0.5
-                    if d < shortest then
-                        shortest = d
-                        closestTarget = head
-                    end
-                end
-            end
-        end
-    end
-
-    -- Aimbot: авто-наведение
-    if Config.Aimbot and closestTarget then
-        Camera.CFrame = Camera.CFrame:Lerp(CFramenew(Camera.CFrame.Position, closestTarget.Position), Config.AimStrength)
-        if tick() - lastShot >= Config.FIRE_RATE then
-            lastShot = tick()
-            local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
-            if tool then tool:Activate() end
-        end
-    end
-end)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch
