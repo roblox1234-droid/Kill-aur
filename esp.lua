@@ -18,8 +18,8 @@ local Config = {
     Fly = false,
     NoClip = false,
     FlySpeed = 50,
-    FOV = 120,          -- радиус авто-наведения (в пикселях)
-    AIM_SPEED = 0.25,   -- скорость наведения (0.1 = плавно, 0.5 = резко)
+    FOV = 120,          -- радиус авто-наведения (пиксели)
+    AIM_SPEED = 0.25,   -- скорость наведения
     FIRE_RATE = 0.1,
 }
 
@@ -49,8 +49,8 @@ gui.Parent = LP:WaitForChild("PlayerGui")
 
 -- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 560)
-main.Position = UDim2.new(0.5, -150, 0.5, -280)
+main.Size = UDim2.fromOffset(300, 620)
+main.Position = UDim2.new(0.5, -150, 0.5, -310)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -158,6 +158,95 @@ makeToggle(310, "NoClip",     "NoClip")
 makeToggle(340, "Save TP",    "SaveTP")
 makeToggle(370, "Back TP",    "BackTP")
 makeToggle(400, "Menu Key",   "Menu")
+
+-- ===== СЛАЙДЕР FOV =====
+local sliderY = 440
+local sliderMin = 20
+local sliderMax = 500
+
+local sliderLabel = Instance.new("TextLabel")
+sliderLabel.Size = UDim2.new(1, -20, 0, 20)
+sliderLabel.Position = UDim2.fromOffset(10, sliderY)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.Text = string.format("  FOV: %d", Config.FOV)
+sliderLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+sliderLabel.Font = Enum.Font.Code
+sliderLabel.TextSize = 13
+sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+sliderLabel.Parent = main
+
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, -20, 0, 12)
+sliderBg.Position = UDim2.fromOffset(10, sliderY + 24)
+sliderBg.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = main
+
+local sliderBgCorner = Instance.new("UICorner")
+sliderBgCorner.CornerRadius = UDim.new(1, 0)
+sliderBgCorner.Parent = sliderBg
+
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new((Config.FOV - sliderMin) / (sliderMax - sliderMin), 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 150)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+
+local sliderFillCorner = Instance.new("UICorner")
+sliderFillCorner.CornerRadius = UDim.new(1, 0)
+sliderFillCorner.Parent = sliderFill
+
+local sliderKnob = Instance.new("Frame")
+sliderKnob.Size = UDim2.fromOffset(16, 16)
+sliderKnob.AnchorPoint = Vector2.new(0.5, 0.5)
+sliderKnob.Position = UDim2.new((Config.FOV - sliderMin) / (sliderMax - sliderMin), 0, 0.5, 0)
+sliderKnob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderKnob.BorderSizePixel = 0
+sliderKnob.Parent = sliderBg
+
+local sliderKnobCorner = Instance.new("UICorner")
+sliderKnobCorner.CornerRadius = UDim.new(1, 0)
+sliderKnobCorner.Parent = sliderKnob
+
+local dragging = false
+
+local function updateSlider(inputX)
+    local relX = math.clamp((inputX - sliderBg.AbsolutePosition.X) / sliderBg.AbsoluteSize.X, 0, 1)
+    local value = math.floor(sliderMin + relX * (sliderMax - sliderMin))
+    Config.FOV = value
+    sliderFill.Size = UDim2.new(relX, 0, 1, 0)
+    sliderKnob.Position = UDim2.new(relX, 0, 0.5, 0)
+    sliderLabel.Text = string.format("  FOV: %d", value)
+end
+
+sliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        updateSlider(input.Position.X)
+    end
+end)
+
+sliderKnob.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement 
+        or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(input.Position.X)
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 
+        or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
