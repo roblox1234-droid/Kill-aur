@@ -17,7 +17,6 @@ local CFramenew = CFrame.new
 
 -- ================= НАСТРОЙКИ =================
 local Config = {
-    -- Visual
     ESP = true,
     Box = true,
     Name = true,
@@ -25,25 +24,13 @@ local Config = {
     Tool = true,
     Chams = true,
     VisibleOnly = false,
-    Tracers = false,
-    -- Aimbot
     Aimbot = false,
-    ShowFOV = true,
-    FOV = 100,
-    FIRE_RATE = 0.1,
-    AimStrength = 0.85,
-    -- Movement
     Fly = false,
     Noclip = false,
     FlySpeed = 50,
-    SpeedHack = false,
-    WalkSpeed = 16,
-    InfiniteJump = false,
-    BunnyHop = false,
-    -- Misc
-    AntiAFK = true,
-    Fullbright = false,
-    FPSBoost = false,
+    FOV = 100,
+    FIRE_RATE = 0.1,
+    AimStrength = 0.85,
 }
 
 local Keybinds = {
@@ -54,17 +41,9 @@ local Keybinds = {
     Tool        = nil,
     Chams       = nil,
     VisibleOnly = nil,
-    Tracers     = nil,
     Aimbot      = Enum.KeyCode.Q,
-    ShowFOV     = nil,
     Fly         = Enum.KeyCode.F,
     Noclip      = Enum.KeyCode.V,
-    SpeedHack   = nil,
-    InfiniteJump= nil,
-    BunnyHop    = Enum.KeyCode.B,
-    AntiAFK     = nil,
-    Fullbright  = nil,
-    FPSBoost    = nil,
     Menu        = Enum.KeyCode.Delete,
 }
 
@@ -74,11 +53,9 @@ gui.Name = "CheatGUI"
 gui.ResetOnSpawn = false
 gui.IgnoreGuiInset = true
 gui.ClipToDeviceSafeArea = false
-gui.DisplayOrder = 999999
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- ===== FPS + PING =====
+-- ===== FPS + PING (радужный) =====
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.fromOffset(120, 40)
 infoLabel.Position = UDim2.new(1, -130, 0, 10)
@@ -91,7 +68,6 @@ infoLabel.TextSize = 13
 infoLabel.Text = "FPS: --\nPing: --"
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 infoLabel.TextYAlignment = Enum.TextYAlignment.Center
-infoLabel.ZIndex = 10
 infoLabel.Parent = gui
 
 local pad = Instance.new("UIPadding")
@@ -112,14 +88,13 @@ end
 
 -- ===== ГЛАВНОЕ ОКНО =====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(320, 480)
-main.Position = UDim2.new(0.5, -160, 0.5, -240)
+main.Size = UDim2.fromOffset(300, 520)
+main.Position = UDim2.new(0.5, -150, 0.5, -260)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
 main.Active = true
 main.Draggable = true
-main.ZIndex = 10
 main.Parent = gui
 Instance.new("UIStroke", main).Color = Color3.fromRGB(80, 80, 100)
 
@@ -127,12 +102,11 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 title.BorderSizePixel = 0
-title.Text = "  CHEAT MENU"
+title.Text = "  ESP MENU"
 title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.Code
 title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.ZIndex = 11
 title.Parent = main
 
 local close = Instance.new("TextButton")
@@ -144,93 +118,9 @@ close.Text = "X"
 close.TextColor3 = Color3.fromRGB(255, 255, 255)
 close.Font = Enum.Font.Code
 close.TextSize = 14
-close.ZIndex = 12
 close.Parent = main
 
--- ===== ВКЛАДКИ =====
-local tabsBar = Instance.new("Frame")
-tabsBar.Size = UDim2.new(1, 0, 0, 30)
-tabsBar.Position = UDim2.fromOffset(0, 30)
-tabsBar.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-tabsBar.BorderSizePixel = 0
-tabsBar.ZIndex = 11
-tabsBar.Parent = main
-
-local tabsLayout = Instance.new("UIListLayout")
-tabsLayout.FillDirection = Enum.FillDirection.Horizontal
-tabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-tabsLayout.Parent = tabsBar
-
-local pages = {}
-local tabButtons = {}
-local activeTab = nil
-
-local function selectTab(name)
-    activeTab = name
-    for tabName, page in pairs(pages) do
-        page.Visible = (tabName == name)
-    end
-    for tabName, btn in pairs(tabButtons) do
-        if tabName == name then
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-            btn.TextColor3 = Color3.fromRGB(0, 255, 150)
-        else
-            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-            btn.TextColor3 = Color3.fromRGB(150, 150, 150)
-        end
-    end
-end
-
-local function createTab(name, displayName)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1/4, 0, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-    btn.BorderSizePixel = 0
-    btn.Text = displayName
-    btn.TextColor3 = Color3.fromRGB(150, 150, 150)
-    btn.Font = Enum.Font.Code
-    btn.TextSize = 13
-    btn.ZIndex = 12
-    btn.Parent = tabsBar
-
-    local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -10, 1, -70)
-    page.Position = UDim2.fromOffset(5, 65)
-    page.BackgroundTransparency = 1
-    page.BorderSizePixel = 0
-    page.ScrollBarThickness = 4
-    page.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
-    page.CanvasSize = UDim2.new(0, 0, 0, 0)
-    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    page.Visible = false
-    page.ZIndex = 11
-    page.Parent = main
-
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4)
-    layout.Parent = page
-
-    local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingRight = UDim.new(0, 5)
-    padding.Parent = page
-
-    pages[name] = page
-    tabButtons[name] = btn
-
-    btn.MouseButton1Click:Connect(function()
-        selectTab(name)
-    end)
-end
-
-createTab("Visual",   "Visual")
-createTab("Aimbot",   "Aimbot")
-createTab("Movement", "Move")
-createTab("Misc",     "Misc")
-
--- ===== СОЗДАНИЕ ТОГГЛОВ =====
+-- ===== МЕНЮ =====
 local toggles = {}
 local bindingKey = nil
 
@@ -239,9 +129,10 @@ local function getBindText(key)
     return kb and kb.Name or "—"
 end
 
-local function makeToggle(page, label, key)
+local function makeToggle(y, label, key)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -80, 0, 26)
+    btn.Position = UDim2fromOffset(10, y)
     btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     btn.BorderSizePixel = 0
     btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
@@ -249,8 +140,7 @@ local function makeToggle(page, label, key)
     btn.Font = Enum.Font.Code
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.ZIndex = 12
-    btn.Parent = page
+    btn.Parent = main
 
     btn.MouseButton1Click:Connect(function()
         Config[key] = not Config[key]
@@ -258,24 +148,18 @@ local function makeToggle(page, label, key)
         btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
         if key == "Fly" then toggleFly() end
         if key == "Noclip" then toggleNoclip() end
-        if key == "SpeedHack" then toggleSpeedHack() end
-        if key == "InfiniteJump" then toggleInfiniteJump() end
-        if key == "BunnyHop" then toggleBunnyHop() end
-        if key == "AntiAFK" then toggleAntiAFK() end
-        if key == "Fullbright" then toggleFullbright() end
     end)
 
     local kb = Instance.new("TextButton")
     kb.Size = UDim2.fromOffset(60, 26)
-    kb.Position = UDim2.new(1, -70, 0, 0)
+    kb.Position = UDim2.new(1, -70, 0, y)
     kb.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     kb.BorderSizePixel = 0
     kb.Text = getBindText(key)
     kb.TextColor3 = Keybinds[key] and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(120, 120, 120)
     kb.Font = Enum.Font.Code
     kb.TextSize = 12
-    kb.ZIndex = 12
-    kb.Parent = btn
+    kb.Parent = main
 
     kb.MouseButton1Click:Connect(function()
         bindingKey = key
@@ -292,146 +176,112 @@ local function makeToggle(page, label, key)
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
--- ===== СЛАЙДЕРЫ =====
-local function makeSlider(page, label, min, max, default, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 44)
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-    frame.BorderSizePixel = 0
-    frame.ZIndex = 11
-    frame.Parent = page
+makeToggle(40,  "ESP Master",   "ESP")
+makeToggle(70,  "Box",          "Box")
+makeToggle(100, "Name + Dist",  "Name")
+makeToggle(130, "HP Bar",       "HP")
+makeToggle(160, "Tool",         "Tool")
+makeToggle(190, "Chams",        "Chams")
+makeToggle(220, "Visible Only", "VisibleOnly")
+makeToggle(250, "Aimbot",       "Aimbot")
+makeToggle(280, "Fly",          "Fly")
+makeToggle(310, "Noclip",       "Noclip")
+makeToggle(340, "Menu Key",     "Menu")
 
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 18)
-    title.Position = UDim2.fromOffset(10, 4)
-    title.BackgroundTransparency = 1
-    title.Text = label .. ": " .. default
-    title.TextColor3 = Color3.fromRGB(0, 255, 150)
-    title.Font = Enum.Font.Code
-    title.TextSize = 13
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.ZIndex = 12
-    title.Parent = frame
+-- ===== ПОЛЗУНОК СКОРОСТИ =====
+local speedFrame = Instance.new("Frame")
+speedFrame.Size = UDim2.new(1, -20, 0, 50)
+speedFrame.Position = UDim2fromOffset(10, 380)
+speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+speedFrame.BorderSizePixel = 0
+speedFrame.Parent = main
 
-    local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, -20, 0, 8)
-    sliderBg.Position = UDim2.new(0, 10, 1, -18)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
-    sliderBg.BorderSizePixel = 0
-    sliderBg.ZIndex = 12
-    sliderBg.Parent = frame
-    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
+local speedTitle = Instance.new("TextLabel")
+speedTitle.Size = UDim2.new(1, -20, 0, 18)
+speedTitle.Position = UDim2fromOffset(10, 4)
+speedTitle.BackgroundTransparency = 1
+speedTitle.Text = "Fly Speed: 50"
+speedTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
+speedTitle.Font = Enum.Font.Code
+speedTitle.TextSize = 13
+speedTitle.TextXAlignment = Enum.TextXAlignment.Left
+speedTitle.Parent = speedFrame
 
-    local sliderFill = Instance.new("Frame")
-    sliderFill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-    sliderFill.BorderSizePixel = 0
-    sliderFill.ZIndex = 13
-    sliderFill.Parent = sliderBg
-    Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, -20, 0, 8)
+sliderBg.Position = UDim2.new(0, 10, 1, -18)
+sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = speedFrame
+Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
 
-    local thumb = Instance.new("Frame")
-    thumb.Size = UDim2.fromOffset(16, 16)
-    thumb.AnchorPoint = Vector2.new(0.5, 0.5)
-    thumb.Position = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
-    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    thumb.BorderSizePixel = 0
-    thumb.ZIndex = 14
-    thumb.Parent = sliderBg
-    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0.25, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
 
-    local dragging = false
+local sliderThumb = Instance.new("Frame")
+sliderThumb.Size = UDim2.fromOffset(16, 16)
+sliderThumb.Position = UDim2.new(0.25, -8, 0.5, -8)
+sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderThumb.BorderSizePixel = 0
+sliderThumb.ZIndex = 2
+sliderThumb.Parent = sliderBg
+Instance.new("UICorner", sliderThumb).CornerRadius = UDim.new(1, 0)
 
-    local function update(value)
-        value = mathclamp(value, min, max)
-        local percent = (value - min) / (max - min)
-        sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-        thumb.Position = UDim2.new(percent, 0, 0.5, 0)
-        title.Text = label .. ": " .. mathfloor(value)
-        callback(mathfloor(value))
-    end
+local minSpeed, maxSpeed = 10, 200
+local dragging = false
 
-    local function getValue(x)
-        local absPos = sliderBg.AbsolutePosition.X
-        local absSize = sliderBg.AbsoluteSize.X
-        local rel = mathclamp((x - absPos) / absSize, 0, 1)
-        return min + (max - min) * rel
-    end
-
-    sliderBg.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            update(getValue(input.Position.X))
-        end
-    end)
-
-    thumb.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-        end
-    end)
-
-    UIS.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            update(getValue(input.Position.X))
-        end
-    end)
-
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
+local function updateSlider(value)
+    value = mathclamp(value, minSpeed, maxSpeed)
+    Config.FlySpeed = mathfloor(value)
+    local percent = (Config.FlySpeed - minSpeed) / (maxSpeed - minSpeed)
+    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    sliderThumb.Position = UDim2.new(percent, -8, 0.5, -8)
+    speedTitle.Text = "Fly Speed: " .. Config.FlySpeed
 end
 
--- ===== ЗАПОЛНЕНИЕ ВКЛАДОК =====
+local function getValueFromMouse(x)
+    local absPos = sliderBg.AbsolutePosition.X
+    local absSize = sliderBg.AbsoluteSize.X
+    local relative = mathclamp((x - absPos) / absSize, 0, 1)
+    return minSpeed + (maxSpeed - minSpeed) * relative
+end
 
--- Visual
-makeToggle(pages.Visual, "ESP Master",   "ESP")
-makeToggle(pages.Visual, "Box",          "Box")
-makeToggle(pages.Visual, "Name + Dist",  "Name")
-makeToggle(pages.Visual, "HP Bar",       "HP")
-makeToggle(pages.Visual, "Tool",         "Tool")
-makeToggle(pages.Visual, "Chams",        "Chams")
-makeToggle(pages.Visual, "Visible Only", "VisibleOnly")
-makeToggle(pages.Visual, "Tracers",      "Tracers")
-
--- Aimbot
-makeToggle(pages.Aimbot, "Aimbot",   "Aimbot")
-makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
-makeSlider(pages.Aimbot, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
-makeSlider(pages.Aimbot, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
-
--- Movement
-makeToggle(pages.Movement, "Fly",          "Fly")
-makeToggle(pages.Movement, "Noclip",       "Noclip")
-makeToggle(pages.Movement, "Speed Hack",   "SpeedHack")
-makeToggle(pages.Movement, "Infinite Jump","InfiniteJump")
-makeToggle(pages.Movement, "Bunny Hop",    "BunnyHop")
-makeSlider(pages.Movement, "Fly Speed", 10, 500, Config.FlySpeed, function(v) Config.FlySpeed = v end)
-makeSlider(pages.Movement, "Walk Speed", 16, 200, Config.WalkSpeed, function(v)
-    Config.WalkSpeed = v
-    if Config.SpeedHack then
-        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = v end
+sliderThumb.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
     end
 end)
 
--- Misc
-makeToggle(pages.Misc, "Anti-AFK",   "AntiAFK")
-makeToggle(pages.Misc, "Fullbright", "Fullbright")
-makeToggle(pages.Misc, "FPS Boost",  "FPSBoost")
-makeToggle(pages.Misc, "Menu Key",   "Menu")
+sliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        updateSlider(getValueFromMouse(input.Position.X))
+    end
+end)
 
-selectTab("Visual")
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(getValueFromMouse(input.Position.X))
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+updateSlider(Config.FlySpeed)
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
 notifyGui.Name = "Notify"
 notifyGui.ResetOnSpawn = false
 notifyGui.IgnoreGuiInset = true
-notifyGui.DisplayOrder = 9999999
-notifyGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 notifyGui.Parent = LP:WaitForChild("PlayerGui")
 
 local notify = Instance.new("TextLabel")
@@ -446,7 +296,6 @@ notify.Font = Enum.Font.Code
 notify.TextSize = 16
 notify.TextTransparency = 1
 notify.Visible = false
-notify.ZIndex = 2
 notify.Parent = notifyGui
 
 local notifyStroke = Instance.new("UIStroke")
@@ -484,23 +333,6 @@ function showNotify(text, color)
     end)
 end
 
--- ===== FOV CIRCLE =====
-local fovCircle = Instance.new("Frame")
-fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
-fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
-fovCircle.BackgroundTransparency = 1
-fovCircle.BorderSizePixel = 0
-fovCircle.Visible = false
-fovCircle.ZIndex = 5
-fovCircle.Parent = gui
-
-local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = Color3.fromRGB(0, 255, 150)
-fovStroke.Thickness = 2
-fovStroke.Transparency = 0.2
-fovStroke.Parent = fovCircle
-Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
-
 -- ===== ПРОВЕРКА ВИДИМОСТИ =====
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -519,7 +351,6 @@ local function createESP(player)
     box.BackgroundTransparency = 1
     box.BorderSizePixel = 0
     box.Visible = false
-    box.ZIndex = 3
     box.Parent = gui
 
     local corners = {}
@@ -530,7 +361,6 @@ local function createESP(player)
         f1.Size = UDim2fromOffset(9, 2)
         f1.AnchorPoint = Vector2.new(ax, ay)
         f1.Position = UDim2.new(px, 0, py, 0)
-        f1.ZIndex = 4
         f1.Parent = box
 
         local f2 = Instance.new("Frame")
@@ -539,7 +369,6 @@ local function createESP(player)
         f2.Size = UDim2fromOffset(2, 9)
         f2.AnchorPoint = Vector2.new(ax, ay)
         f2.Position = UDim2.new(px, 0, py, 0)
-        f2.ZIndex = 4
         f2.Parent = box
         return {f1, f2}
     end
@@ -559,7 +388,6 @@ local function createESP(player)
     name.Size = UDim2.new(1, 0, 0, 18)
     name.Position = UDim2.new(0, 0, 0, -22)
     name.TextXAlignment = Enum.TextXAlignment.Center
-    name.ZIndex = 4
     name.Parent = box
 
     local tool = Instance.new("TextLabel")
@@ -572,7 +400,6 @@ local function createESP(player)
     tool.Size = UDim2.new(1, 0, 0, 16)
     tool.Position = UDim2.new(0, 0, 1, 5)
     tool.TextXAlignment = Enum.TextXAlignment.Center
-    tool.ZIndex = 4
     tool.Parent = box
 
     local hpBg = Instance.new("Frame")
@@ -581,7 +408,6 @@ local function createESP(player)
     hpBg.BorderSizePixel = 0
     hpBg.Size = UDim2.new(0, 4, 1, 0)
     hpBg.Position = UDim2.new(0, -11, 0, 0)
-    hpBg.ZIndex = 4
     hpBg.Parent = box
     Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
 
@@ -591,25 +417,21 @@ local function createESP(player)
     hpFill.Size = UDim2.new(1, 0, 1, 0)
     hpFill.AnchorPoint = Vector2.new(0, 1)
     hpFill.Position = UDim2.new(0, 0, 1, 0)
-    hpFill.ZIndex = 5
     hpFill.Parent = hpBg
     Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
 
-    -- Tracer (линия от низа экрана)
-    local tracer = Instance.new("Frame")
-    tracer.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-    tracer.BorderSizePixel = 0
-    tracer.AnchorPoint = Vector2.new(0.5, 0)
-    tracer.Size = UDim2.fromOffset(1, 0)
-    tracer.Visible = false
-    tracer.ZIndex = 3
-    tracer.Parent = gui
-
     cache[player] = {
-        box = box, corners = corners, name = name, tool = tool,
-        hpBg = hpBg, hpFill = hpFill, highlight = nil,
-        tracer = tracer,
-        head = nil, root = nil, humanoid = nil, char = nil,
+        box = box,
+        corners = corners,
+        name = name,
+        tool = tool,
+        hpBg = hpBg,
+        hpFill = hpFill,
+        highlight = nil,
+        head = nil,
+        root = nil,
+        humanoid = nil,
+        char = nil,
     }
 end
 
@@ -617,7 +439,6 @@ local function removeESP(player)
     local data = cache[player]
     if data then
         if data.highlight then data.highlight:Destroy() end
-        if data.tracer then data.tracer:Destroy() end
         data.box:Destroy()
         cache[player] = nil
     end
@@ -755,72 +576,195 @@ function toggleNoclip()
     end
 end
 
--- ===== SPEED HACK =====
-local speedConn
+LP.CharacterAdded:Connect(function()
+    task.wait(0.4)
+    if Config.Fly then toggleFly() end
+    if Config.Noclip then toggleNoclip() end
+end)
 
-local function toggleSpeedHack()
-    if speedConn then speedConn:Disconnect() speedConn = nil end
-    if Config.SpeedHack then
-        speedConn = RunService.Heartbeat:Connect(function()
-            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-            if hum then hum.WalkSpeed = Config.WalkSpeed end
-        end)
-    else
-        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.WalkSpeed = 16 end
-    end
+-- ===== ВВОД =====
+local function refreshToggle(key)
+    local t = toggles[key]
+    if not t then return end
+    t.btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", t.label)
+    t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
 end
 
--- ===== INFINITE JUMP =====
-local infJumpConn
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-local function toggleInfiniteJump()
-    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
-    if Config.InfiniteJump then
-        infJumpConn = UIS.JumpRequest:Connect(function()
-            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+    if bindingKey then
+        Keybinds[bindingKey] = input.KeyCode
+        local kb = toggles[bindingKey].kb
+        if kb then
+            kb.Text = input.KeyCode.Name
+            kb.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end
+        bindingKey = nil
+        return
+    end
+
+    for key, bind in pairs(Keybinds) do
+        if bind and input.KeyCode == bind then
+            if key == "Menu" then
+                main.Visible = not main.Visible
+                return
             end
-        end)
-    end
-end
-
--- ===== BUNNY HOP =====
-local bhopConn
-
-local function toggleBunnyHop()
-    if bhopConn then bhopConn:Disconnect() bhopConn = nil end
-    if Config.BunnyHop then
-        bhopConn = RunService.Stepped:Connect(function()
-            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.FloorMaterial ~= Enum.Material.Air then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            if Config[key] ~= nil then
+                Config[key] = not Config[key]
+                refreshToggle(key)
+                if key == "Fly" then toggleFly() end
+                if key == "Noclip" then toggleNoclip() end
             end
-        end)
+            return
+        end
     end
-end
+end)
 
--- ===== ANTI-AFK =====
-local antiAfkConn
-local VirtualUser = game:GetService("VirtualUser")
+close.MouseButton1Click:Connect(function()
+    main.Visible = false
+end)
 
-local function toggleAntiAFK()
-    if antiAfkConn then antiAfkConn:Disconnect() antiAfkConn = nil end
-    if Config.AntiAFK then
-        antiAfkConn = LP.Idled:Connect(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
+-- ===== ОСНОВНОЙ ЦИКЛ =====
+local lastShot = 0
+
+RunService.RenderStepped:Connect(function()
+    -- FPS + Ping
+    infoLabel.TextColor3 = getRainbowColor()
+    frames += 1
+    if tick() - lastTime >= 1 then
+        fps = frames
+        frames = 0
+        lastTime = tick()
+        local ping = 0
+        pcall(function()
+            ping = mathfloor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
         end)
+        infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
     end
-end
 
--- ===== FULLBRIGHT =====
-local Lighting = game:GetService("Lighting")
-local originalLighting = {
-    Brightness = Lighting.Brightness,
-    ClockTime = Lighting.ClockTime,
-    Ambient = Lighting.Ambient,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    FogEnd = Lighting.FogEnd,
-    GlobalShadows = Lighting
+    if not Config.ESP and not Config.Aimbot then return end
+
+    local vpSize = Camera.ViewportSize
+    local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
+    local closestTarget, shortest = nil, Config.FOV
+    local camPos = Camera.CFrame.Position
+
+    for player, esp in pairs(cache) do
+        if not esp.char or not esp.char.Parent then
+            updateCharacterCache(player)
+        end
+
+        local head = esp.head
+        local root = esp.root
+        local hum = esp.humanoid
+        local char = esp.char
+
+        if not (head and root and hum and hum.Health > 0) then
+            esp.box.Visible = false
+            continue
+        end
+
+        if Config.Chams then
+            if not esp.highlight or esp.highlight.Parent ~= char then
+                if esp.highlight then esp.highlight:Destroy() end
+                local hl = Instance.new("Highlight")
+                hl.FillColor = Color3.fromRGB(255, 50, 50)
+                hl.FillTransparency = 0.55
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                hl.OutlineTransparency = 0
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Adornee = char
+                hl.Parent = char
+                esp.highlight = hl
+            end
+        elseif esp.highlight then
+            esp.highlight:Destroy()
+            esp.highlight = nil
+        end
+
+        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3new(0, 0.9, 0))
+        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3new(0, 3.1, 0))
+        local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
+
+        local canSee = true
+        if Config.VisibleOnly then
+            canSee = isVisible(camPos, head.Position, char)
+        end
+
+        local visible = onScreen and canSee
+
+        if visible and Config.ESP then
+            local height = math.abs(botPos.Y - topPos.Y)
+            local width = height * 0.55
+
+            esp.box.Visible = Config.Box
+            esp.box.Position = UDim2fromOffset(topPos.X - width * 0.5, topPos.Y)
+            esp.box.Size = UDim2fromOffset(width, height)
+
+            local ratio = mathclamp(hum.Health / hum.MaxHealth, 0, 1)
+            local boxColor = ratio > 0.6 and Color3.fromRGB(0, 255, 140)
+                or ratio > 0.3 and Color3.fromRGB(255, 220, 50)
+                or Color3.fromRGB(255, 70, 70)
+
+            for _, group in pairs(esp.corners) do
+                group[1].BackgroundColor3 = boxColor
+                group[2].BackgroundColor3 = boxColor
+            end
+
+            if Config.Name then
+                esp.name.Visible = true
+                local dist = mathfloor((camPos - root.Position).Magnitude)
+                esp.name.Text = player.Name .. "  ·  " .. dist .. "m"
+            else
+                esp.name.Visible = false
+            end
+
+            if Config.Tool then
+                local held = char:FindFirstChildOfClass("Tool")
+                esp.tool.Visible = true
+                esp.tool.Text = held and held.Name or ""
+            else
+                esp.tool.Visible = false
+            end
+
+            if Config.HP then
+                esp.hpBg.Visible = true
+                esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
+            else
+                esp.hpBg.Visible = false
+            end
+        else
+            esp.box.Visible = false
+        end
+
+        if Config.Aimbot then
+            local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
+            if headOn and headScreen.Z > 0 then
+                local canAim = true
+                if Config.VisibleOnly then
+                    canAim = isVisible(camPos, head.Position, char)
+                end
+                if canAim then
+                    local dx = headScreen.X - centerX
+                    local dy = headScreen.Y - centerY
+                    local d = (dx * dx + dy * dy) ^ 0.5
+                    if d < shortest then
+                        shortest = d
+                        closestTarget = head
+                    end
+                end
+            end
+        end
+    end
+
+    if Config.Aimbot and closestTarget then
+        Camera.CFrame = Camera.CFrame:Lerp(CFramenew(Camera.CFrame.Position, closestTarget.Position), Config.AimStrength)
+        if tick() - lastShot >= Config.FIRE_RATE then
+            lastShot = tick()
+            local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+            if tool then tool:Activate() end
+        end
+    end
+end)
