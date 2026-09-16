@@ -25,7 +25,7 @@ local Config = {
     Chams = true, Tracers = false,
     Aimbot = false, ShowFOV = true, FOV = 100,
     FIRE_RATE = 0.1, AimStrength = 0.85,
-    Fly = false, Noclip = false, FlySpeed = 50,
+    Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
     AntiAFK = true, Fullbright = false, AutoReload = false,
@@ -316,55 +316,58 @@ for _, p in ipairs(Players:GetPlayers()) do
     createESP(p)
 end
 
--- ================= FLY =================
-local flyVel, flyGyro, flyConn
+-- ================= FLY (Entitynt version) =================
+local flying = false
+local flySpeed = 100
+local maxFlySpeed = 1000
+local speedIncrement = 0.4
+local originalGravity = workspace.Gravity
+local flyThread = nil
 
-local function stopFly()
-    if flyVel then flyVel:Destroy() flyVel = nil end
-    if flyGyro then flyGyro:Destroy() flyGyro = nil end
-    if flyConn then flyConn:Disconnect() flyConn = nil end
+local function randomizeValue(value, range)
+    return value + (value * (math.random(-range, range) / 100))
 end
 
-local function startFly()
-    stopFly()
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not root or not hum then return end
+local function flyLoop()
+    while flying do
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then break end
 
-    hum.PlatformStand = true
+        local MoveDirection = Vector3.new()
+        local cameraCFrame = Camera.CFrame
 
-    flyVel = Instance.new("BodyVelocity")
-    flyVel.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-    flyVel.Velocity = Vector3.zero
-    flyVel.Parent = root
+        if UIS:IsKeyDown(Enum.KeyCode.W) then MoveDirection += cameraCFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then MoveDirection -= cameraCFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then MoveDirection -= cameraCFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then MoveDirection += cameraCFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then MoveDirection += Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then MoveDirection -= Vector3.new(0, 1, 0) end
 
-    flyGyro = Instance.new("BodyGyro")
-    flyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-    flyGyro.P = 3000
-    flyGyro.CFrame = root.CFrame
-    flyGyro.Parent = root
+        if MoveDirection.Magnitude > 0 then
+            flySpeed = math.min(flySpeed + speedIncrement, maxFlySpeed)
+            MoveDirection = MoveDirection.Unit * math.min(randomizeValue(flySpeed, 10), maxFlySpeed)
+            root.AssemblyLinearVelocity = MoveDirection * 0.5
+        else
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
 
-    flyConn = RunService.RenderStepped:Connect(function()
-        if not flyVel or not flyGyro or not root.Parent then return end
-        local cam = Camera.CFrame
-        local move = Vector3.zero
-        if UIS:IsKeyDown(Enum.KeyCode.W) then move += cam.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then move -= cam.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then move -= cam.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
-        if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3.new(0, 1, 0) end
-        flyVel.Velocity = move.Magnitude > 0 and move.Unit * Config.FlySpeed or Vector3.zero
-        flyGyro.CFrame = cam
-    end)
+        RunService.RenderStepped:Wait()
+    end
 end
 
 function toggleFly()
-    if Config.Fly then startFly() else stopFly() end
-    if not Config.Fly then
-        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum.PlatformStand = false end
+    if Config.Fly then
+        flying = true
+        workspace.Gravity = 0
+        flyThread = task.spawn(flyLoop)
+    else
+        flying = false
+        flySpeed = 100
+        workspace.Gravity = originalGravity
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then root.AssemblyLinearVelocity = Vector3.zero end
     end
 end
 
@@ -648,7 +651,6 @@ makeToggle(pages.Movement, "Noclip", "Noclip")
 makeToggle(pages.Movement, "Speed Hack", "SpeedHack")
 makeToggle(pages.Movement, "Infinite Jump", "InfiniteJump")
 makeToggle(pages.Movement, "Bunny Hop", "BunnyHop")
-makeSlider(pages.Movement, "Fly Speed", 10, 500, Config.FlySpeed, function(v) Config.FlySpeed = v end)
 makeSlider(pages.Movement, "Walk Speed", 16, 200, Config.WalkSpeed, function(v)
     Config.WalkSpeed = v
     if Config.SpeedHack then
@@ -697,7 +699,10 @@ end)
 -- ================= РЕСПАВН =================
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
-    if Config.Fly then toggleFly() end
+    if Config.Fly then
+        flying = false
+        toggleFly()
+    end
     if Config.Noclip then toggleNoclip() end
     if Config.SpeedHack then toggleSpeedHack() end
     if Config.InfiniteJump then toggleInfiniteJump() end
