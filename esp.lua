@@ -5,15 +5,12 @@ local UIS = game:GetService("UserInputService")
 local Camera = workspace.CurrentCamera
 local LP = Players.LocalPlayer
 
--- Локализация
 local pairs = pairs
 local ipairs = ipairs
 local Vector3new = Vector3.new
 local UDim2fromOffset = UDim2.fromOffset
 local mathfloor = math.floor
 local mathclamp = math.clamp
-local mathatan2 = math.atan2
-local mathdeg = math.deg
 local tick = tick
 local CFramenew = CFrame.new
 
@@ -25,7 +22,7 @@ local Config = {
     HP = true,
     Tool = true,
     Chams = true,
-    Skeleton = true,
+    VisibleOnly = false,     -- ← фильтр через стены
     Aimbot = false,
     Fly = false,
     Noclip = false,
@@ -35,17 +32,17 @@ local Config = {
 }
 
 local Keybinds = {
-    ESP      = nil,
-    Box      = nil,
-    Name     = nil,
-    HP       = nil,
-    Tool     = nil,
-    Chams    = nil,
-    Skeleton = nil,
-    Aimbot   = Enum.KeyCode.Q,
-    Fly      = Enum.KeyCode.F,
-    Noclip   = Enum.KeyCode.V,
-    Menu     = Enum.KeyCode.Delete,
+    ESP         = nil,
+    Box         = nil,
+    Name        = nil,
+    HP          = nil,
+    Tool        = nil,
+    Chams       = nil,
+    VisibleOnly = nil,
+    Aimbot      = Enum.KeyCode.Q,
+    Fly         = Enum.KeyCode.F,
+    Noclip      = Enum.KeyCode.V,
+    Menu        = Enum.KeyCode.Delete,
 }
 
 -- ===== GUI =====
@@ -57,8 +54,8 @@ gui.ClipToDeviceSafeArea = false
 gui.Parent = LP:WaitForChild("PlayerGui")
 
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(300, 490)
-main.Position = UDim2.new(0.5, -150, 0.5, -245)
+main.Size = UDim2.fromOffset(300, 520)
+main.Position = UDim2.new(0.5, -150, 0.5, -260)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -66,10 +63,7 @@ main.Active = true
 main.Draggable = true
 main.Parent = gui
 
-local mainStroke = Instance.new("UIStroke")
-mainStroke.Color = Color3.fromRGB(80, 80, 100)
-mainStroke.Thickness = 1
-mainStroke.Parent = main
+Instance.new("UIStroke", main).Color = Color3.fromRGB(80, 80, 100)
 
 local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
@@ -96,7 +90,6 @@ close.Parent = main
 -- ===== МЕНЮ =====
 local toggles = {}
 local bindingKey = nil
-local FlySpeedDisplay = nil
 
 local function getBindText(key)
     local kb = Keybinds[key]
@@ -151,74 +144,106 @@ local function makeToggle(y, label, key)
     toggles[key] = {btn = btn, kb = kb, label = label}
 end
 
-makeToggle(40,  "ESP Master", "ESP")
-makeToggle(70,  "Box",        "Box")
-makeToggle(100, "Name + Dist","Name")
-makeToggle(130, "HP Bar",     "HP")
-makeToggle(160, "Tool",       "Tool")
-makeToggle(190, "Chams",      "Chams")
-makeToggle(220, "Skeleton",   "Skeleton")
-makeToggle(250, "Aimbot",     "Aimbot")
-makeToggle(280, "Fly",        "Fly")
-makeToggle(310, "Noclip",     "Noclip")
-makeToggle(340, "Menu Key",   "Menu")
+makeToggle(40,  "ESP Master",   "ESP")
+makeToggle(70,  "Box",          "Box")
+makeToggle(100, "Name + Dist",  "Name")
+makeToggle(130, "HP Bar",       "HP")
+makeToggle(160, "Tool",         "Tool")
+makeToggle(190, "Chams",        "Chams")
+makeToggle(220, "Visible Only", "VisibleOnly")
+makeToggle(250, "Aimbot",       "Aimbot")
+makeToggle(280, "Fly",          "Fly")
+makeToggle(310, "Noclip",       "Noclip")
+makeToggle(340, "Menu Key",     "Menu")
 
--- Скорость флая
+-- ===== ПОЛЗУНОК СКОРОСТИ =====
 local speedFrame = Instance.new("Frame")
-speedFrame.Size = UDim2.new(1, -20, 0, 30)
-speedFrame.Position = UDim2fromOffset(10, 370)
+speedFrame.Size = UDim2.new(1, -20, 0, 50)
+speedFrame.Position = UDim2fromOffset(10, 380)
 speedFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
 speedFrame.BorderSizePixel = 0
 speedFrame.Parent = main
 
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(0.5, 0, 1, 0)
-speedLabel.BackgroundTransparency = 1
-speedLabel.Text = "  Fly Speed: 50"
-speedLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
-speedLabel.Font = Enum.Font.Code
-speedLabel.TextSize = 13
-speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-speedLabel.Parent = speedFrame
-FlySpeedDisplay = speedLabel
+local speedTitle = Instance.new("TextLabel")
+speedTitle.Size = UDim2.new(1, -20, 0, 18)
+speedTitle.Position = UDim2fromOffset(10, 4)
+speedTitle.BackgroundTransparency = 1
+speedTitle.Text = "Fly Speed: 50"
+speedTitle.TextColor3 = Color3.fromRGB(0, 255, 150)
+speedTitle.Font = Enum.Font.Code
+speedTitle.TextSize = 13
+speedTitle.TextXAlignment = Enum.TextXAlignment.Left
+speedTitle.Parent = speedFrame
 
-local minusBtn = Instance.new("TextButton")
-minusBtn.Size = UDim2.fromOffset(34, 24)
-minusBtn.Position = UDim2.new(1, -78, 0.5, -12)
-minusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-minusBtn.BorderSizePixel = 0
-minusBtn.Text = "−"
-minusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-minusBtn.Font = Enum.Font.Code
-minusBtn.TextSize = 18
-minusBtn.Parent = speedFrame
+local sliderBg = Instance.new("Frame")
+sliderBg.Size = UDim2.new(1, -20, 0, 8)
+sliderBg.Position = UDim2.new(0, 10, 1, -18)
+sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+sliderBg.BorderSizePixel = 0
+sliderBg.Parent = speedFrame
+Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
 
-local plusBtn = Instance.new("TextButton")
-plusBtn.Size = UDim2.fromOffset(34, 24)
-plusBtn.Position = UDim2.new(1, -38, 0.5, -12)
-plusBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-plusBtn.BorderSizePixel = 0
-plusBtn.Text = "+"
-plusBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-plusBtn.Font = Enum.Font.Code
-plusBtn.TextSize = 18
-plusBtn.Parent = speedFrame
+local sliderFill = Instance.new("Frame")
+sliderFill.Size = UDim2.new(0.25, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderBg
+Instance.new("UICorner", sliderFill).CornerRadius = UDim.new(1, 0)
 
-local function updateSpeedDisplay()
-    FlySpeedDisplay.Text = "  Fly Speed: " .. Config.FlySpeed
+local sliderThumb = Instance.new("Frame")
+sliderThumb.Size = UDim2.fromOffset(16, 16)
+sliderThumb.Position = UDim2.new(0.25, -8, 0.5, -8)
+sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderThumb.BorderSizePixel = 0
+sliderThumb.ZIndex = 2
+sliderThumb.Parent = sliderBg
+Instance.new("UICorner", sliderThumb).CornerRadius = UDim.new(1, 0)
+
+local minSpeed, maxSpeed = 10, 200
+local dragging = false
+
+local function updateSlider(value)
+    value = mathclamp(value, minSpeed, maxSpeed)
+    Config.FlySpeed = mathfloor(value)
+    local percent = (Config.FlySpeed - minSpeed) / (maxSpeed - minSpeed)
+    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    sliderThumb.Position = UDim2.new(percent, -8, 0.5, -8)
+    speedTitle.Text = "Fly Speed: " .. Config.FlySpeed
 end
 
-minusBtn.MouseButton1Click:Connect(function()
-    Config.FlySpeed = mathclamp(Config.FlySpeed - 5, 10, 200)
-    updateSpeedDisplay()
-    showNotify("[ Fly Speed: " .. Config.FlySpeed .. " ]", Color3.fromRGB(0, 200, 255))
+local function getValueFromMouse(x)
+    local absPos = sliderBg.AbsolutePosition.X
+    local absSize = sliderBg.AbsoluteSize.X
+    local relative = mathclamp((x - absPos) / absSize, 0, 1)
+    return minSpeed + (maxSpeed - minSpeed) * relative
+end
+
+sliderThumb.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+    end
 end)
 
-plusBtn.MouseButton1Click:Connect(function()
-    Config.FlySpeed = mathclamp(Config.FlySpeed + 5, 10, 200)
-    updateSpeedDisplay()
-    showNotify("[ Fly Speed: " .. Config.FlySpeed .. " ]", Color3.fromRGB(0, 200, 255))
+sliderBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        updateSlider(getValueFromMouse(input.Position.X))
+    end
 end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(getValueFromMouse(input.Position.X))
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+updateSlider(Config.FlySpeed)
 
 -- ===== УВЕДОМЛЕНИЯ =====
 local notifyGui = Instance.new("ScreenGui")
@@ -276,47 +301,19 @@ function showNotify(text, color)
     end)
 end
 
--- ===== ESP CACHE =====
-local cache = {}
+-- ===== ПРОВЕРКА ВИДИМОСТИ =====
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
-local BONE_CONNECTIONS_R15 = {
-    {"Head", "UpperTorso"},
-    {"UpperTorso", "LowerTorso"},
-    {"UpperTorso", "LeftUpperArm"},
-    {"LeftUpperArm", "LeftLowerArm"},
-    {"LeftLowerArm", "LeftHand"},
-    {"UpperTorso", "RightUpperArm"},
-    {"RightUpperArm", "RightLowerArm"},
-    {"RightLowerArm", "RightHand"},
-    {"LowerTorso", "LeftUpperLeg"},
-    {"LeftUpperLeg", "LeftLowerLeg"},
-    {"LeftLowerLeg", "LeftFoot"},
-    {"LowerTorso", "RightUpperLeg"},
-    {"RightUpperLeg", "RightLowerLeg"},
-    {"RightLowerLeg", "RightFoot"},
-}
-
-local BONE_CONNECTIONS_R6 = {
-    {"Head", "Torso"},
-    {"Torso", "Left Arm"},
-    {"Torso", "Right Arm"},
-    {"Torso", "Left Leg"},
-    {"Torso", "Right Leg"},
-}
-
-local function createBoneLine(parent)
-    local line = Instance.new("Frame")
-    line.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
-    line.BorderSizePixel = 0
-    line.AnchorPoint = Vector2.new(0.5, 0.5)
-    line.Visible = false
-    line.Parent = parent
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(1, 0)
-    corner.Parent = line
-    return line
+local function isVisible(fromPos, toPos, characterToIgnore)
+    rayParams.FilterDescendantsInstances = {LP.Character, characterToIgnore}
+    local direction = toPos - fromPos
+    local result = workspace:Raycast(fromPos, direction, rayParams)
+    return result == nil or result.Instance:IsDescendantOf(characterToIgnore)
 end
+
+-- ===== ESP =====
+local cache = {}
 
 local function createESP(player)
     local box = Instance.new("Frame")
@@ -381,7 +378,6 @@ local function createESP(player)
     hpBg.Size = UDim2.new(0, 4, 1, 0)
     hpBg.Position = UDim2.new(0, -11, 0, 0)
     hpBg.Parent = box
-
     Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
 
     local hpFill = Instance.new("Frame")
@@ -391,12 +387,7 @@ local function createESP(player)
     hpFill.AnchorPoint = Vector2.new(0, 1)
     hpFill.Position = UDim2.new(0, 0, 1, 0)
     hpFill.Parent = hpBg
-
     Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
-
-    local skeletonFolder = Instance.new("Folder")
-    skeletonFolder.Name = "Skeleton"
-    skeletonFolder.Parent = box
 
     cache[player] = {
         box = box,
@@ -405,15 +396,11 @@ local function createESP(player)
         tool = tool,
         hpBg = hpBg,
         hpFill = hpFill,
-        skeletonFolder = skeletonFolder,
-        bones = {},
         highlight = nil,
-        -- кэш частей
         head = nil,
         root = nil,
         humanoid = nil,
         char = nil,
-        isR15 = false,
     }
 end
 
@@ -429,7 +416,6 @@ end
 local function updateCharacterCache(player)
     local data = cache[player]
     if not data then return end
-
     local char = player.Character
     if not char then
         data.char = nil
@@ -438,12 +424,10 @@ local function updateCharacterCache(player)
         data.humanoid = nil
         return
     end
-
     data.char = char
     data.head = char:FindFirstChild("Head")
     data.root = char:FindFirstChild("HumanoidRootPart")
     data.humanoid = char:FindFirstChildOfClass("Humanoid")
-    data.isR15 = char:FindFirstChild("UpperTorso") ~= nil
 end
 
 Players.PlayerAdded:Connect(function(player)
@@ -451,9 +435,6 @@ Players.PlayerAdded:Connect(function(player)
     createESP(player)
     player.CharacterAdded:Connect(function()
         task.wait(0.3)
-        updateCharacterCache(player)
-    end)
-    player.CharacterRemoving:Connect(function()
         updateCharacterCache(player)
     end)
 end)
@@ -510,7 +491,6 @@ local function startFly()
         if UIS:IsKeyDown(Enum.KeyCode.D) then move += cam.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.Space) then move += Vector3new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then move -= Vector3new(0, 1, 0) end
-
         flyBodyVel.Velocity = move.Magnitude > 0 and move.Unit * Config.FlySpeed or Vector3.zero
         flyBodyGyro.CFrame = cam
     end)
@@ -536,7 +516,7 @@ local function stopNoclip()
     end
     local char = LP.Character
     if char then
-        for _, part in ipairs(char:GetDescendants()) do
+        for _, part in ipairs(char:GetChildren()) do
             if part:IsA("BasePart") then
                 part.CanCollide = true
             end
@@ -549,14 +529,11 @@ local function startNoclip()
     noclipConn = RunService.Stepped:Connect(function()
         local char = LP.Character
         if not char then return end
-        for _, part in ipairs(char:GetChildren()) do -- быстрее, чем GetDescendants
+        for _, part in ipairs(char:GetChildren()) do
             if part:IsA("BasePart") then
                 part.CanCollide = false
             end
         end
-        -- дополнительные части
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then hrp.CanCollide = false end
     end)
 end
 
@@ -633,7 +610,6 @@ RunService.RenderStepped:Connect(function()
     local camPos = Camera.CFrame.Position
 
     for player, esp in pairs(cache) do
-        -- обновляем кэш если нужно
         if not esp.char or not esp.char.Parent then
             updateCharacterCache(player)
         end
@@ -645,9 +621,6 @@ RunService.RenderStepped:Connect(function()
 
         if not (head and root and hum and hum.Health > 0) then
             esp.box.Visible = false
-            for i = 1, #esp.bones do
-                esp.bones[i].Visible = false
-            end
             continue
         end
 
@@ -672,12 +645,18 @@ RunService.RenderStepped:Connect(function()
 
         local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3new(0, 0.9, 0))
         local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3new(0, 3.1, 0))
+        local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
 
-        local visible = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
+        -- Проверка видимости через стены
+        local canSee = true
+        if Config.VisibleOnly then
+            canSee = isVisible(camPos, head.Position, char)
+        end
+
+        local visible = onScreen and canSee
 
         if visible and Config.ESP then
-            local height = botPos.Y - topPos.Y
-            if height < 0 then height = -height end
+            local height = math.abs(botPos.Y - topPos.Y)
             local width = height * 0.55
 
             esp.box.Visible = Config.Box
@@ -716,75 +695,36 @@ RunService.RenderStepped:Connect(function()
             else
                 esp.hpBg.Visible = false
             end
-
-            -- Скелет
-            if Config.Skeleton then
-                local connections = esp.isR15 and BONE_CONNECTIONS_R15 or BONE_CONNECTIONS_R6
-                local bones = esp.bones
-
-                if #bones < #connections then
-                    for i = #bones + 1, #connections do
-                        bones[i] = createBoneLine(esp.skeletonFolder)
-                    end
-                end
-
-                for i, connection in ipairs(connections) do
-                    local part0 = char:FindFirstChild(connection[1])
-                    local part1 = char:FindFirstChild(connection[2])
-                    local line = bones[i]
-
-                    if part0 and part1 then
-                        local p0, on0 = Camera:WorldToViewportPoint(part0.Position)
-                        local p1, on1 = Camera:WorldToViewportPoint(part1.Position)
-
-                        if on0 and on1 and p0.Z > 0 and p1.Z > 0 then
-                            local dx = p1.X - p0.X
-                            local dy = p1.Y - p0.Y
-                            local dist = (dx * dx + dy * dy) ^ 0.5
-                            local midX = (p0.X + p1.X) * 0.5
-                            local midY = (p0.Y + p1.Y) * 0.5
-
-                            line.Visible = true
-                            line.BackgroundColor3 = boxColor
-                            line.Size = UDim2fromOffset(dist, 2)
-                            line.Position = UDim2fromOffset(midX, midY)
-                            line.Rotation = mathdeg(mathatan2(dy, dx))
-                        else
-                            line.Visible = false
-                        end
-                    else
-                        line.Visible = false
-                    end
-                end
-            else
-                for i = 1, #esp.bones do
-                    esp.bones[i].Visible = false
-                end
-            end
         else
             esp.box.Visible = false
-            for i = 1, #esp.bones do
-                esp.bones[i].Visible = false
-            end
         end
 
         -- Aimbot
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
-                local dx = headScreen.X - centerX
-                local dy = headScreen.Y - centerY
-                local d = (dx * dx + dy * dy) ^ 0.5
-                if d < shortest then
-                    shortest = d
-                    closestTarget = head
+                local canAim = true
+                if Config.VisibleOnly then
+                    canAim = isVisible(camPos, head.Position, char)
+                end
+
+                if canAim then
+                    local dx = headScreen.X - centerX
+                    local dy = headScreen.Y - centerY
+                    local d = (dx * dx + dy * dy) ^ 0.5
+                    if d < shortest then
+                        shortest = d
+                        closestTarget = head
+                    end
                 end
             end
         end
     end
 
     if Config.Aimbot and closestTarget then
-        Camera.CFrame = Camera.CFrame:Lerp(CFramenew(Camera.CFrame.Position, closestTarget.Position), 0.2)
+        local strength = 0.85
+        Camera.CFrame = Camera.CFrame:Lerp(CFramenew(Camera.CFrame.Position, closestTarget.Position), strength)
+
         if tick() - lastShot >= Config.FIRE_RATE then
             lastShot = tick()
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
