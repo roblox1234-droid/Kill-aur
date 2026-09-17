@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA CHEAT + DASH-AIMBOT + TEAM/DIST COLORS + NPC LIST
+-- NINJA CHEAT + DASH-AIMBOT + TEAM/DIST + NPC LIST
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -100,6 +100,7 @@ infoLabel.TextSize = 13
 infoLabel.Text = "FPS: --\nPing: --"
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+infoLabel.ZIndex = 500
 infoLabel.Parent = gui
 Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 8)
 local infoStroke = Instance.new("UIStroke", infoLabel)
@@ -114,6 +115,7 @@ npcListFrame.BackgroundColor3 = THEME.bg
 npcListFrame.BackgroundTransparency = 0.15
 npcListFrame.BorderSizePixel = 0
 npcListFrame.Visible = true
+npcListFrame.ZIndex = 500
 npcListFrame.Parent = gui
 Instance.new("UICorner", npcListFrame).CornerRadius = UDim.new(0, 8)
 local npcListStroke = Instance.new("UIStroke", npcListFrame)
@@ -129,6 +131,7 @@ npcListTitle.TextColor3 = THEME.accent
 npcListTitle.Font = Enum.Font.GothamBold
 npcListTitle.TextSize = 14
 npcListTitle.TextXAlignment = Enum.TextXAlignment.Left
+npcListTitle.ZIndex = 501
 npcListTitle.Parent = npcListFrame
 
 local npcListContainer = Instance.new("Frame")
@@ -136,6 +139,7 @@ npcListContainer.Size = UDim2.new(1, -10, 1, -34)
 npcListContainer.Position = UDim2.fromOffset(5, 30)
 npcListContainer.BackgroundTransparency = 1
 npcListContainer.ClipsDescendants = true
+npcListContainer.ZIndex = 501
 npcListContainer.Parent = npcListFrame
 
 local fps, frames, lastTime = 0, 0, tick()
@@ -149,6 +153,7 @@ main.BorderSizePixel = 0
 main.Visible = false
 main.Active = true
 main.Draggable = true
+main.ZIndex = 1000
 main.Parent = gui
 Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
 local mainStroke = Instance.new("UIStroke", main)
@@ -159,6 +164,7 @@ local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 40)
 titleBar.BackgroundColor3 = THEME.bg2
 titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 1001
 titleBar.Parent = main
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
 local titleFix = Instance.new("Frame")
@@ -166,6 +172,7 @@ titleFix.Size = UDim2.new(1, 0, 0, 10)
 titleFix.Position = UDim2.new(0, 0, 1, -10)
 titleFix.BackgroundColor3 = THEME.bg2
 titleFix.BorderSizePixel = 0
+titleFix.ZIndex = 1001
 titleFix.Parent = titleBar
 
 local title = Instance.new("TextLabel")
@@ -177,6 +184,7 @@ title.TextColor3 = THEME.accent
 title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 1002
 title.Parent = titleBar
 
 local subtitle = Instance.new("TextLabel")
@@ -189,6 +197,7 @@ subtitle.Font = Enum.Font.Code
 subtitle.TextSize = 10
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
 subtitle.TextYAlignment = Enum.TextYAlignment.Bottom
+subtitle.ZIndex = 1002
 subtitle.Parent = titleBar
 
 local close = Instance.new("TextButton")
@@ -200,6 +209,7 @@ close.Text = "X"
 close.TextColor3 = Color3.fromRGB(255, 255, 255)
 close.Font = Enum.Font.GothamBold
 close.TextSize = 14
+close.ZIndex = 1002
 close.Parent = titleBar
 Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
 close.MouseButton1Click:Connect(function() main.Visible = false end)
@@ -209,6 +219,7 @@ sidebar.Size = UDim2.new(0, 120, 1, -50)
 sidebar.Position = UDim2.fromOffset(8, 46)
 sidebar.BackgroundColor3 = THEME.bg2
 sidebar.BorderSizePixel = 0
+sidebar.ZIndex = 1001
 sidebar.Parent = main
 Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 8)
 
@@ -227,6 +238,7 @@ content.Size = UDim2.new(1, -144, 1, -58)
 content.Position = UDim2.fromOffset(136, 46)
 content.BackgroundColor3 = THEME.bg2
 content.BorderSizePixel = 0
+content.ZIndex = 1001
 content.Parent = main
 Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
 
@@ -256,6 +268,7 @@ local function createTab(name, displayName, emoji)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.ZIndex = 1002
     btn.Parent = sidebar
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
@@ -269,6 +282,7 @@ local function createTab(name, displayName, emoji)
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = false
+    page.ZIndex = 1002
     page.Parent = content
 
     local layout = Instance.new("UIListLayout")
@@ -296,6 +310,7 @@ notify.TextColor3 = THEME.accent
 notify.Font = Enum.Font.Gotham
 notify.TextSize = 14
 notify.Visible = false
+notify.ZIndex = 2000
 notify.Parent = gui
 Instance.new("UICorner", notify).CornerRadius = UDim.new(0, 8)
 local notifyStroke = Instance.new("UIStroke", notify)
@@ -319,6 +334,7 @@ fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
 fovCircle.BackgroundTransparency = 1
 fovCircle.BorderSizePixel = 0
 fovCircle.Visible = false
+fovCircle.ZIndex = 50
 fovCircle.Parent = gui
 
 local fovStroke = Instance.new("UIStroke")
@@ -591,6 +607,7 @@ task.spawn(function()
             lbl.Font = Enum.Font.Gotham
             lbl.TextSize = 12
             lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.ZIndex = 502
             lbl.Text = string.format("  %s  —  %dm", data.model.Name, math.floor(data.dist))
 
             if data.tag == "NPCs" then lbl.TextColor3 = THEME.red
@@ -615,16 +632,15 @@ local cache = {}
 
 local function createESP(player)
     if player == LP then return end
+    
+    -- Рамка (используем BorderSizePixel вместо UIStroke)
     local box = Instance.new("Frame")
     box.BackgroundTransparency = 1
-    box.BorderSizePixel = 0
+    box.BorderSizePixel = 1
+    box.BorderColor3 = Color3.fromRGB(255, 0, 0)
     box.Visible = false
+    box.ZIndex = 100
     box.Parent = gui
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = THEME.accent
-    stroke.Thickness = 1
-    stroke.Parent = box
 
     local nameLbl = Instance.new("TextLabel")
     nameLbl.BackgroundTransparency = 1
@@ -636,6 +652,7 @@ local function createESP(player)
     nameLbl.Size = UDim2.new(1, 0, 0, 18)
     nameLbl.Position = UDim2.new(0, 0, 0, -22)
     nameLbl.TextXAlignment = Enum.TextXAlignment.Center
+    nameLbl.ZIndex = 101
     nameLbl.Parent = box
 
     local toolLbl = Instance.new("TextLabel")
@@ -648,6 +665,7 @@ local function createESP(player)
     toolLbl.Size = UDim2.new(1, 0, 0, 16)
     toolLbl.Position = UDim2.new(0, 0, 1, 5)
     toolLbl.TextXAlignment = Enum.TextXAlignment.Center
+    toolLbl.ZIndex = 101
     toolLbl.Parent = box
 
     local hpBg = Instance.new("Frame")
@@ -656,6 +674,7 @@ local function createESP(player)
     hpBg.BorderSizePixel = 0
     hpBg.Size = UDim2.new(0, 4, 1, 0)
     hpBg.Position = UDim2.new(0, -11, 0, 0)
+    hpBg.ZIndex = 101
     hpBg.Parent = box
     Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
 
@@ -665,6 +684,7 @@ local function createESP(player)
     hpFill.Size = UDim2.new(1, 0, 1, 0)
     hpFill.AnchorPoint = Vector2.new(0, 1)
     hpFill.Position = UDim2.new(0, 0, 1, 0)
+    hpFill.ZIndex = 102
     hpFill.Parent = hpBg
     Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
 
@@ -674,10 +694,11 @@ local function createESP(player)
     tracer.AnchorPoint = Vector2.new(0.5, 0)
     tracer.Size = UDim2.fromOffset(1, 0)
     tracer.Visible = false
+    tracer.ZIndex = 99
     tracer.Parent = gui
 
     cache[player] = {
-        box = box, stroke = stroke, nameLbl = nameLbl, toolLbl = toolLbl,
+        box = box, nameLbl = nameLbl, toolLbl = toolLbl,
         hpBg = hpBg, hpFill = hpFill, highlight = nil, tracer = tracer,
     }
 end
@@ -887,7 +908,7 @@ local function applyToggle(key, value)
     end
 end
 
--- ==== КОМПОНЕНТЫ МЕНЮ ====
+-- ==== МЕНЮ ====
 local toggles = {}
 local bindingMode = nil
 
@@ -896,6 +917,7 @@ local function makeToggle(page, label, key)
     row.Size = UDim2.new(1, 0, 0, 30)
     row.BackgroundColor3 = THEME.bg3
     row.BorderSizePixel = 0
+    row.ZIndex = 1002
     row.Parent = page
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
 
@@ -904,6 +926,7 @@ local function makeToggle(page, label, key)
     indicator.Position = UDim2.new(0, 6, 0.5, -9)
     indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
     indicator.BorderSizePixel = 0
+    indicator.ZIndex = 1003
     indicator.Parent = row
     Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
 
@@ -917,7 +940,7 @@ local function makeToggle(page, label, key)
     btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.ZIndex = 2
+    btn.ZIndex = 1003
     btn.Active = true
     btn.Parent = row
 
@@ -930,7 +953,7 @@ local function makeToggle(page, label, key)
     bindBtn.TextColor3 = THEME.accent
     bindBtn.Font = Enum.Font.Code
     bindBtn.TextSize = 11
-    bindBtn.ZIndex = 3
+    bindBtn.ZIndex = 1004
     bindBtn.Active = true
     bindBtn.Parent = row
     Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
@@ -961,6 +984,7 @@ local function makeSlider(page, label, min, max, default, callback)
     frame.Size = UDim2.new(1, 0, 0, 46)
     frame.BackgroundColor3 = THEME.bg3
     frame.BorderSizePixel = 0
+    frame.ZIndex = 1002
     frame.Parent = page
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
 
@@ -973,6 +997,7 @@ local function makeSlider(page, label, min, max, default, callback)
     titleLbl.Font = Enum.Font.Gotham
     titleLbl.TextSize = 13
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.ZIndex = 1003
     titleLbl.Parent = frame
 
     local sliderBg = Instance.new("Frame")
@@ -980,6 +1005,7 @@ local function makeSlider(page, label, min, max, default, callback)
     sliderBg.Position = UDim2.new(0, 10, 1, -16)
     sliderBg.BackgroundColor3 = THEME.bg
     sliderBg.BorderSizePixel = 0
+    sliderBg.ZIndex = 1003
     sliderBg.Parent = frame
     Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
 
@@ -987,6 +1013,7 @@ local function makeSlider(page, label, min, max, default, callback)
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
     fill.BackgroundColor3 = THEME.accent
     fill.BorderSizePixel = 0
+    fill.ZIndex = 1004
     fill.Parent = sliderBg
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
@@ -996,6 +1023,7 @@ local function makeSlider(page, label, min, max, default, callback)
     thumb.Position = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
     thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     thumb.BorderSizePixel = 0
+    thumb.ZIndex = 1005
     thumb.Parent = sliderBg
     Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
 
@@ -1186,6 +1214,7 @@ RunService.RenderStepped:Connect(function()
 
         local distToPlayer = (camPos - root.Position).Magnitude
 
+        -- CHAMS (подсветка через Highlight)
         if Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
@@ -1198,7 +1227,6 @@ RunService.RenderStepped:Connect(function()
                 hl.Parent = char
                 esp.highlight = hl
             end
-            -- Обновляем цвет по команде/дистанции
             esp.highlight.FillColor = getESPColor(player, distToPlayer)
         elseif esp.highlight then
             esp.highlight:Destroy()
@@ -1219,11 +1247,13 @@ RunService.RenderStepped:Connect(function()
             local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             local boxColor = getESPColor(player, distToPlayer)
 
-            -- Дэш — золотая рамка
             if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
                 boxColor = Color3.fromRGB(255, 255, 0)
             end
-            esp.stroke.Color = boxColor
+
+            -- Border вместо UIStroke
+            esp.box.BorderColor3 = boxColor
+            esp.box.BorderSizePixel = 1
 
             esp.nameLbl.Visible = Config.Name
             if Config.Name then
@@ -1265,7 +1295,6 @@ RunService.RenderStepped:Connect(function()
 
                 local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
 
-                -- Team Check для аимбота
                 local sameTeam = false
                 if Config.TeamCheck and LP.Team and player.Team == LP.Team then
                     sameTeam = true
