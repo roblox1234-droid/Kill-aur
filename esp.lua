@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST
+-- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST (REAL-TIME + LEVEL)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -29,6 +29,9 @@ local THEME = {
     text       = Color3.fromRGB(220, 220, 230),
     textDim    = Color3.fromRGB(120, 120, 140),
     danger     = Color3.fromRGB(239, 68, 68),
+    green      = Color3.fromRGB(0, 255, 140),
+    yellow     = Color3.fromRGB(255, 200, 50),
+    red        = Color3.fromRGB(255, 80, 80),
 }
 -- ==================
 
@@ -94,7 +97,7 @@ infoStroke.Thickness = 1
 
 -- ==== NPC LIST (левый верхний угол) ====
 local npcListFrame = Instance.new("Frame")
-npcListFrame.Size = UDim2.fromOffset(220, 300)
+npcListFrame.Size = UDim2.fromOffset(240, 320)
 npcListFrame.Position = UDim2.fromOffset(10, 10)
 npcListFrame.BackgroundColor3 = THEME.bg
 npcListFrame.BackgroundTransparency = 0.15
@@ -130,6 +133,7 @@ npcListScroll.Parent = npcListFrame
 
 local npcListLayout = Instance.new("UIListLayout")
 npcListLayout.Padding = UDim.new(0, 2)
+npcListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 npcListLayout.Parent = npcListScroll
 -- ==== КОНЕЦ NPC LIST UI ====
 
@@ -416,60 +420,150 @@ workspace.DescendantRemoving:Connect(function(obj)
     end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ ====
-task.spawn(function()
-    while task.wait(0.25) do
-        if not Config.NPCList then
-            npcListFrame.Visible = false
-        else
-            npcListFrame.Visible = true
-            local char = LP.Character
-            local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-            local myPos = myRoot and myRoot.Position or Vector3.zero
+-- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME + LEVEL) ====
+local npcRows = {}
 
-            local list = {}
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if isNPC(obj) then
-                    local hum = obj:FindFirstChildOfClass("Humanoid")
-                    local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-                    if hum and hum.Health > 0 and root then
-                        local dist = math.floor((root.Position - myPos).Magnitude)
-                        table.insert(list, {name = obj.Name, dist = dist})
+local function getNPCLevel(obj)
+    -- 1. Атрибуты модели
+    local lvl = obj:GetAttribute("Level")
+        or obj:GetAttribute("Lvl")
+        or obj:GetAttribute("LVL")
+        or obj:GetAttribute("level")
+
+    -- 2. Атрибуты Humanoid
+    if not lvl then
+        local hum = obj:FindFirstChildOfClass("Humanoid")
+        if hum then
+            lvl = hum:GetAttribute("Level")
+                or hum:GetAttribute("Lvl")
+                or hum:GetAttribute("LVL")
+                or hum:GetAttribute("level")
+        end
+    end
+
+    -- 3. Из имени
+    if not lvl then
+        local nameStr = obj.Name
+        local num = nameStr:match("%[Lv%.%s*(%d+)%]")
+            or nameStr:match("Lv%.?%s*(%d+)")
+            or nameStr:match("Level%s*(%d+)")
+        if num then lvl = tonumber(num) end
+    end
+
+    -- 4. Из DisplayName гуманоида
+    if not lvl then
+        local hum = obj:FindFirstChildOfClass("Humanoid")
+        if hum and hum.DisplayName then
+            local num = hum.DisplayName:match("%[Lv%.%s*(%d+)%]")
+                or hum.DisplayName:match("Lv%.?%s*(%d+)")
+            if num then lvl = tonumber(num) end
+        end
+    end
+
+    -- 5. Из BillboardGui над головой
+    if not lvl then
+        local head = obj:FindFirstChild("Head")
+        if head then
+            for _, gui in ipairs(head:GetDescendants()) do
+                if gui:IsA("TextLabel") then
+                    local num = gui.Text:match("%[Lv%.%s*(%d+)%]")
+                        or gui.Text:match("Lv%.?%s*(%d+)")
+                    if num then
+                        lvl = tonumber(num)
+                        break
                     end
                 end
             end
+        end
+    end
 
-            table.sort(list, function(a, b) return a.dist < b.dist end)
-            while #list > 15 do table.remove(list) end
+    return lvl
+end
 
-            for _, child in ipairs(npcListScroll:GetChildren()) do
-                if child:IsA("TextLabel") then child:Destroy() end
-            end
+local function getNPCDistance(obj, myPos)
+    local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+    if not root then return nil end
+    return (root.Position - myPos).Magnitude
+end
 
-            if #list == 0 then
-                local empty = Instance.new("TextLabel")
-                empty.Size = UDim2.new(1, 0, 0, 20)
-                empty.BackgroundTransparency = 1
-                empty.Text = "  нет NPC рядом"
-                empty.TextColor3 = THEME.textDim
-                empty.Font = Enum.Font.Gotham
-                empty.TextSize = 12
-                empty.TextXAlignment = Enum.TextXAlignment.Left
-                empty.Parent = npcListScroll
-            else
-                for _, data in ipairs(list) do
-                    local lbl = Instance.new("TextLabel")
-                    lbl.Size = UDim2.new(1, 0, 0, 20)
-                    lbl.BackgroundTransparency = 1
-                    lbl.Text = string.format("  %s  —  %dm", data.name, data.dist)
-                    lbl.TextColor3 = THEME.text
-                    lbl.Font = Enum.Font.Gotham
-                    lbl.TextSize = 12
-                    lbl.TextXAlignment = Enum.TextXAlignment.Left
-                    lbl.Parent = npcListScroll
+RunService.RenderStepped:Connect(function()
+    if not Config.NPCList then
+        if npcListFrame.Visible then
+            npcListFrame.Visible = false
+        end
+        return
+    end
+    if not npcListFrame.Visible then
+        npcListFrame.Visible = true
+    end
+
+    local char = LP.Character
+    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return end
+    local myPos = myRoot.Position
+
+    local active = {}
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if isNPC(obj) then
+            local hum = obj:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local dist = getNPCDistance(obj, myPos)
+                if dist and dist < 500 then
+                    active[obj] = {
+                        dist = dist,
+                        level = getNPCLevel(obj),
+                    }
                 end
             end
         end
+    end
+
+    for model, row in pairs(npcRows) do
+        if not active[model] then
+            row.lbl:Destroy()
+            npcRows[model] = nil
+        end
+    end
+
+    for model, data in pairs(active) do
+        if not npcRows[model] then
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 0, 20)
+            lbl.BackgroundTransparency = 1
+            lbl.TextColor3 = THEME.text
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 12
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Parent = npcListScroll
+            npcRows[model] = {lbl = lbl}
+        end
+
+        local lvl = data.level
+        local lvlText = lvl and ("[Lv. " .. lvl .. "] ") or ""
+
+        npcRows[model].lbl.Text = string.format(
+            "  %s%s  —  %dm",
+            lvlText,
+            model.Name,
+            math.floor(data.dist)
+        )
+
+        -- Цвет по уровню
+        if lvl then
+            if lvl >= 40 then
+                npcRows[model].lbl.TextColor3 = THEME.red
+            elseif lvl >= 25 then
+                npcRows[model].lbl.TextColor3 = THEME.yellow
+            elseif lvl >= 10 then
+                npcRows[model].lbl.TextColor3 = THEME.green
+            else
+                npcRows[model].lbl.TextColor3 = THEME.textDim
+            end
+        else
+            npcRows[model].lbl.TextColor3 = THEME.text
+        end
+
+        npcRows[model].lbl.LayoutOrder = math.floor(data.dist)
     end
 end)
 -- ==== КОНЕЦ NPC LIST ====
@@ -829,7 +923,8 @@ local function makeToggle(page, label, key)
     bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
     bindBtn.TextColor3 = THEME.accent
     bindBtn.Font = Enum.Font.Code
-    bindBtn.TextSize = 11    bindBtn.ZIndex = 3
+    bindBtn.TextSize = 11
+    bindBtn.ZIndex = 3
     bindBtn.Active = true
     bindBtn.Parent = row
     Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
