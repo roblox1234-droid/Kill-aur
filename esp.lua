@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA STYLE CHEAT GUI + NPC LIST + TP + BINDS + FILTER
+-- NINJA STYLE CHEAT GUI + NPC LIST + TP + BINDS
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -420,69 +420,16 @@ workspace.DescendantRemoving:Connect(function(obj)
     end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) + STATIC NPCs + ФИЛЬТР ====
+-- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) ====
 local npcRows = {}
 
--- ==== ФИЛЬТР ДЕКОРАЦИЙ В StaticNPCs ====
+-- Фильтр декораций
 local STATIC_BLACKLIST = {
-    -- Фонтаны
     Fountain1 = true, Fountain2 = true, Fountain3 = true,
-    -- Обелиски
     Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
-    -- Врата
     SealedGate = true, SealedGate2 = true, SealedGate3 = true, SealedGate4 = true,
     FogSealedGate = true,
-    -- Деревья
-    SHRTree = true, PHRTree = true,
-    -- Зоны и спавны
-    OfferingArea = true,
-    AccessoryCrafting = true,
-    AilmentApply = true,
-    StarSetSpawn = true, JJTSetSpawn = true, GojoEstateSetSpawn = true,
-    ShadowIslandSetSpawn = true,
-    GojoEstateTPIn = true, GojoEstateTPOut = true,
-    ShadowIslandTPIn = true, ShadowIslandTPOut = true,
-    StarCult1 = true, StarCult2 = true, StarCult3 = true,
-    StarCult4 = true, StarCult5 = true,
-    StarCultRescue = true, StarCultRecruiter = true,
-    StarRageAwakener = true,
-    BloodMAwakener = true, BloodMAwakening = true,
-    BloodMQuest1 = true, BloodMQuest2 = true, BloodMQuest3 = true,
-    LimitlessAwakener = true, LimitlessAwakener2 = true, LimitlessAwakener3 = true,
-    AwakenedZenin = true, AwakenedXPExchanger = true,
-    -- Рейд-зоны (не NPC)
-    BossIslands_Yuta = true, BossIslands_Choso = true, BossIslands_Sukuna = true,
-    BossIslands_Kashimo = true, BossIslands_AToji = true, BossIslands_CurseCalamity = true,
-    BossIslands_AGojo = true, BossIslands_ZeninSiege = true, BossIslands_SukunaInf = true,
-    BossIslands_StarRage = true, BossIslands_Toji = true, BossIslands_Jogo = true,
-    BossIslands_Judge = true, BossIslands_AKashimo = true, BossIslands_TojiInf = true,
-    BossIslands_Maki = true,
 }
--- ==== КОНЕЦ ФИЛЬТРА ====
-
-local function getNPCLevel(obj)
-    local lvl = obj:GetAttribute("Level") or obj:GetAttribute("Lvl")
-    if not lvl then
-        local hum = obj:FindFirstChildOfClass("Humanoid")
-        if hum then lvl = hum:GetAttribute("Level") or hum:GetAttribute("Lvl") end
-    end
-    if not lvl then
-        local num = obj.Name:match("Lv%.?%s*(%d+)")
-        if num then lvl = tonumber(num) end
-    end
-    return lvl
-end
-
-local function getNPCCategory(model)
-    local parent = model.Parent
-    while parent do
-        if parent.Name == "NPCs" then return "ENEMY" end
-        if parent.Name == "Players" then return "PLAYER" end
-        if parent.Name == "StaticNPCs" then return "STATIC" end
-        parent = parent.Parent
-    end
-    return "OTHER"
-end
 
 local function getNPCPosition(obj)
     local root = obj:FindFirstChild("HumanoidRootPart")
@@ -491,18 +438,7 @@ local function getNPCPosition(obj)
         or obj:FindFirstChild("LowerTorso")
         or obj.PrimaryPart
         or obj:FindFirstChildWhichIsA("BasePart")
-    if root then return root.Position end
-    for _, d in ipairs(obj:GetDescendants()) do
-        if d:IsA("BasePart") then return d.Position end
-    end
-    return nil
-end
-
-local function isStaticNPC(obj)
-    if not obj:IsA("Model") then return false end
-    local parent = obj.Parent
-    if not parent or parent.Name ~= "StaticNPCs" then return false end
-    return obj:FindFirstChildWhichIsA("BasePart") ~= nil
+    return root and root.Position or nil
 end
 
 local function teleportTo(pos)
@@ -539,18 +475,52 @@ RunService.RenderStepped:Connect(function()
 
     local active = {}
 
-    -- 1. Humanoid-модели (враги + игроки)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") then
-            local hum = obj:FindFirstChildOfClass("Humanoid")
-            if hum then
-                local category = getNPCCategory(obj)
-                if category == "ENEMY" or category == "PLAYER" then
-                    local pos = getNPCPosition(obj)
-                    if pos then
-                        local dist = (pos - myPos).Magnitude
-                        if dist < 1000 then
-                            active[obj] = {dist = dist, category = category}
+    -- === 1. Characters.Server (Players, NPCs, Shikigami) ===
+    local charsFolder = workspace:FindFirstChild("Characters")
+    if charsFolder then
+        local serverFolder = charsFolder:FindFirstChild("Server")
+        if serverFolder then
+            -- Игроки
+            local playersFolder = serverFolder:FindFirstChild("Players")
+            if playersFolder then
+                for _, obj in ipairs(playersFolder:GetChildren()) do
+                    if obj:IsA("Model") and obj ~= LP.Character then
+                        local pos = getNPCPosition(obj)
+                        if pos then
+                            local dist = (pos - myPos).Magnitude
+                            if dist < 5000 then
+                                active[obj] = {dist = dist, category = "PLAYER"}
+                            end
+                        end
+                    end
+                end
+            end
+            -- Враги
+            local npcsFolder = serverFolder:FindFirstChild("NPCs")
+            if npcsFolder then
+                for _, obj in ipairs(npcsFolder:GetChildren()) do
+                    if obj:IsA("Model") then
+                        local pos = getNPCPosition(obj)
+                        if pos then
+                            local dist = (pos - myPos).Magnitude
+                            if dist < 5000 then
+                                active[obj] = {dist = dist, category = "ENEMY"}
+                            end
+                        end
+                    end
+                end
+            end
+            -- Шикигами
+            local shikigamiFolder = serverFolder:FindFirstChild("Shikigami")
+            if shikigamiFolder then
+                for _, obj in ipairs(shikigamiFolder:GetChildren()) do
+                    if obj:IsA("Model") then
+                        local pos = getNPCPosition(obj)
+                        if pos then
+                            local dist = (pos - myPos).Magnitude
+                            if dist < 5000 then
+                                active[obj] = {dist = dist, category = "PLAYER"}
+                            end
                         end
                     end
                 end
@@ -558,17 +528,17 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- 2. StaticNPCs с фильтром
+    -- === 2. Map.StaticNPCs ===
     local mapFolder = workspace:FindFirstChild("Map")
     if mapFolder then
         local staticFolder = mapFolder:FindFirstChild("StaticNPCs")
         if staticFolder then
             for _, obj in ipairs(staticFolder:GetChildren()) do
-                if isStaticNPC(obj) and not STATIC_BLACKLIST[obj.Name] then
+                if obj:IsA("Model") and not STATIC_BLACKLIST[obj.Name] then
                     local pos = getNPCPosition(obj)
                     if pos then
                         local dist = (pos - myPos).Magnitude
-                        if dist < 1000 then
+                        if dist < 5000 then
                             active[obj] = {dist = dist, category = "STATIC"}
                         end
                     end
@@ -806,7 +776,8 @@ local function startNoclip()
         if not Config.Noclip then return end
         local char = LP.Character
         if not char then return end
-        for _, part in ipairs(char:GetDescendants()) do            if part:IsA("BasePart") and part.CanCollide then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then
                 part.CanCollide = false
             end
         end
