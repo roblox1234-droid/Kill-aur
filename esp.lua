@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST (REAL-TIME + LEVEL)
+-- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST (REAL-TIME)
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -97,7 +97,7 @@ infoStroke.Thickness = 1
 
 -- ==== NPC LIST (левый верхний угол) ====
 local npcListFrame = Instance.new("Frame")
-npcListFrame.Size = UDim2.fromOffset(240, 320)
+npcListFrame.Size = UDim2.fromOffset(250, 320)
 npcListFrame.Position = UDim2.fromOffset(10, 10)
 npcListFrame.BackgroundColor3 = THEME.bg
 npcListFrame.BackgroundTransparency = 0.15
@@ -113,7 +113,7 @@ npcListStroke.Transparency = 0.4
 local npcListTitle = Instance.new("TextLabel")
 npcListTitle.Size = UDim2.new(1, 0, 0, 26)
 npcListTitle.BackgroundTransparency = 1
-npcListTitle.Text = "  NPC LIST"
+npcListTitle.Text = "  NPC / PLAYER LIST"
 npcListTitle.TextColor3 = THEME.accent
 npcListTitle.Font = Enum.Font.GothamBold
 npcListTitle.TextSize = 14
@@ -420,70 +420,43 @@ workspace.DescendantRemoving:Connect(function(obj)
     end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME + LEVEL) ====
+-- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) ====
 local npcRows = {}
 
 local function getNPCLevel(obj)
-    -- 1. Атрибуты модели
-    local lvl = obj:GetAttribute("Level")
-        or obj:GetAttribute("Lvl")
-        or obj:GetAttribute("LVL")
-        or obj:GetAttribute("level")
-
-    -- 2. Атрибуты Humanoid
+    local lvl = obj:GetAttribute("Level") or obj:GetAttribute("Lvl")
     if not lvl then
         local hum = obj:FindFirstChildOfClass("Humanoid")
         if hum then
-            lvl = hum:GetAttribute("Level")
-                or hum:GetAttribute("Lvl")
-                or hum:GetAttribute("LVL")
-                or hum:GetAttribute("level")
+            lvl = hum:GetAttribute("Level") or hum:GetAttribute("Lvl")
         end
     end
-
-    -- 3. Из имени
     if not lvl then
-        local nameStr = obj.Name
-        local num = nameStr:match("%[Lv%.%s*(%d+)%]")
-            or nameStr:match("Lv%.?%s*(%d+)")
-            or nameStr:match("Level%s*(%d+)")
+        local num = obj.Name:match("Lv%.?%s*(%d+)") or obj.Name:match("%[Lv%.%s*(%d+)%]")
         if num then lvl = tonumber(num) end
     end
-
-    -- 4. Из DisplayName гуманоида
-    if not lvl then
-        local hum = obj:FindFirstChildOfClass("Humanoid")
-        if hum and hum.DisplayName then
-            local num = hum.DisplayName:match("%[Lv%.%s*(%d+)%]")
-                or hum.DisplayName:match("Lv%.?%s*(%d+)")
-            if num then lvl = tonumber(num) end
-        end
-    end
-
-    -- 5. Из BillboardGui над головой
-    if not lvl then
-        local head = obj:FindFirstChild("Head")
-        if head then
-            for _, gui in ipairs(head:GetDescendants()) do
-                if gui:IsA("TextLabel") then
-                    local num = gui.Text:match("%[Lv%.%s*(%d+)%]")
-                        or gui.Text:match("Lv%.?%s*(%d+)")
-                    if num then
-                        lvl = tonumber(num)
-                        break
-                    end
-                end
-            end
-        end
-    end
-
     return lvl
 end
 
-local function getNPCDistance(obj, myPos)
-    local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
-    if not root then return nil end
-    return (root.Position - myPos).Magnitude
+local function getNPCCategory(model)
+    local parent = model.Parent
+    while parent do
+        if parent.Name == "NPCs" then return "ENEMY" end
+        if parent.Name == "Players" then return "PLAYER" end
+        if parent.Name == "StaticNPCs" then return "STATIC" end
+        parent = parent.Parent
+    end
+    return "OTHER"
+end
+
+local function getNPCPosition(obj)
+    local root = obj:FindFirstChild("HumanoidRootPart")
+        or obj:FindFirstChild("Torso")
+        or obj:FindFirstChild("UpperTorso")
+        or obj:FindFirstChild("LowerTorso")
+        or obj.PrimaryPart
+        or obj:FindFirstChildWhichIsA("BasePart")
+    return root and root.Position or nil
 end
 
 RunService.RenderStepped:Connect(function()
@@ -503,16 +476,24 @@ RunService.RenderStepped:Connect(function()
     local myPos = myRoot.Position
 
     local active = {}
+
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if isNPC(obj) then
+        if obj:IsA("Model") then
             local hum = obj:FindFirstChildOfClass("Humanoid")
-            if hum and hum.Health > 0 then
-                local dist = getNPCDistance(obj, myPos)
-                if dist and dist < 500 then
-                    active[obj] = {
-                        dist = dist,
-                        level = getNPCLevel(obj),
-                    }
+            if hum then
+                local category = getNPCCategory(obj)
+                if category == "ENEMY" or category == "PLAYER" then
+                    local pos = getNPCPosition(obj)
+                    if pos then
+                        local dist = (pos - myPos).Magnitude
+                        if dist < 1000 then
+                            active[obj] = {
+                                dist = dist,
+                                level = getNPCLevel(obj),
+                                category = category,
+                            }
+                        end
+                    end
                 end
             end
         end
@@ -540,27 +521,18 @@ RunService.RenderStepped:Connect(function()
 
         local lvl = data.level
         local lvlText = lvl and ("[Lv. " .. lvl .. "] ") or ""
+        local prefix = data.category == "ENEMY" and "👹 " or "👤 "
+        local displayName = model.Name:gsub("_Server", ""):gsub("_Client", "")
 
         npcRows[model].lbl.Text = string.format(
-            "  %s%s  —  %dm",
-            lvlText,
-            model.Name,
-            math.floor(data.dist)
+            "  %s%s%s  —  %dm",
+            prefix, lvlText, displayName, math.floor(data.dist)
         )
 
-        -- Цвет по уровню
-        if lvl then
-            if lvl >= 40 then
-                npcRows[model].lbl.TextColor3 = THEME.red
-            elseif lvl >= 25 then
-                npcRows[model].lbl.TextColor3 = THEME.yellow
-            elseif lvl >= 10 then
-                npcRows[model].lbl.TextColor3 = THEME.green
-            else
-                npcRows[model].lbl.TextColor3 = THEME.textDim
-            end
+        if data.category == "ENEMY" then
+            npcRows[model].lbl.TextColor3 = THEME.red
         else
-            npcRows[model].lbl.TextColor3 = THEME.text
+            npcRows[model].lbl.TextColor3 = THEME.green
         end
 
         npcRows[model].lbl.LayoutOrder = math.floor(data.dist)
