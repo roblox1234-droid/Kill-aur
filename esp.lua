@@ -1,5 +1,5 @@
 -- ============================================
--- CHEAT SCRIPT + NPC HIGHLIGHT + CUSTOM BINDS
+-- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -15,10 +15,22 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 if _G.MyCheatLoaded then return end
 _G.MyCheatLoaded = true
 
--- ==== НАСТРОЙКА НАЗВАНИЯ ====
-local SCRIPT_NAME = "MY CHEAT v1.0"
+-- ==== НАСТРОЙКА ====
+local SCRIPT_NAME = "NINJA CHEAT"
 local SCRIPT_AUTHOR = "by you"
--- ============================
+
+local THEME = {
+    bg         = Color3.fromRGB(18, 18, 24),
+    bg2        = Color3.fromRGB(22, 22, 30),
+    bg3        = Color3.fromRGB(28, 28, 38),
+    border     = Color3.fromRGB(45, 45, 60),
+    accent     = Color3.fromRGB(168, 85, 247),
+    accent2    = Color3.fromRGB(139, 92, 246),
+    text       = Color3.fromRGB(220, 220, 230),
+    textDim    = Color3.fromRGB(120, 120, 140),
+    danger     = Color3.fromRGB(239, 68, 68),
+}
+-- ==================
 
 for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
     if g.Name == "CheatGUI" then g:Destroy() end
@@ -37,7 +49,6 @@ local Config = {
     NPCHighlight = true,
 }
 
--- ==== СТАРТОВЫЕ БИНДЫ (можно менять в меню) ====
 local Binds = {
     Aimbot = Enum.KeyCode.Q,
     Fly = Enum.KeyCode.F,
@@ -53,7 +64,6 @@ local Binds = {
     AntiAFK = Enum.KeyCode.K,
     Menu = Enum.KeyCode.Delete,
 }
--- ================================================
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "CheatGUI"
@@ -64,78 +74,119 @@ gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
 local infoLabel = Instance.new("TextLabel")
-infoLabel.Size = UDim2.fromOffset(120, 40)
-infoLabel.Position = UDim2.new(1, -130, 0, 10)
-infoLabel.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-infoLabel.BackgroundTransparency = 0.3
+infoLabel.Size = UDim2.fromOffset(140, 44)
+infoLabel.Position = UDim2.new(1, -150, 0, 10)
+infoLabel.BackgroundColor3 = THEME.bg2
+infoLabel.BackgroundTransparency = 0.15
 infoLabel.BorderSizePixel = 0
-infoLabel.TextColor3 = Color3.fromRGB(0, 255, 140)
+infoLabel.TextColor3 = THEME.accent
 infoLabel.Font = Enum.Font.Code
 infoLabel.TextSize = 13
 infoLabel.Text = "FPS: --\nPing: --"
 infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 infoLabel.TextYAlignment = Enum.TextYAlignment.Center
 infoLabel.Parent = gui
-Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 8)
+local infoStroke = Instance.new("UIStroke", infoLabel)
+infoStroke.Color = THEME.border
+infoStroke.Thickness = 1
 
 local fps, frames, lastTime = 0, 0, tick()
 
+-- ==== ГЛАВНОЕ ОКНО ====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(340, 480)
-main.Position = UDim2.new(0.5, -170, 0.5, -240)
-main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+main.Size = UDim2.fromOffset(520, 380)
+main.Position = UDim2.new(0.5, -260, 0.5, -190)
+main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
 main.Visible = false
 main.Active = true
 main.Draggable = true
 main.Parent = gui
-Instance.new("UIStroke", main).Color = Color3.fromRGB(80, 80, 100)
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+local mainStroke = Instance.new("UIStroke", main)
+mainStroke.Color = THEME.border
+mainStroke.Thickness = 1
+
+-- Заголовок
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = THEME.bg2
+titleBar.BorderSizePixel = 0
+titleBar.Parent = main
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 10)
+titleFix.Position = UDim2.new(0, 0, 1, -10)
+titleFix.BackgroundColor3 = THEME.bg2
+titleFix.BorderSizePixel = 0
+titleFix.Parent = titleBar
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-title.BorderSizePixel = 0
-title.Text = "  " .. SCRIPT_NAME
-title.TextColor3 = Color3.fromRGB(0, 255, 150)
-title.Font = Enum.Font.Code
+title.Size = UDim2.new(1, -50, 0, 40)
+title.Position = UDim2.fromOffset(16, 0)
+title.BackgroundTransparency = 1
+title.Text = SCRIPT_NAME
+title.TextColor3 = THEME.accent
+title.Font = Enum.Font.GothamBold
 title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Parent = main
+title.Parent = titleBar
 
 local subtitle = Instance.new("TextLabel")
-subtitle.Size = UDim2.new(1, 0, 0, 14)
-subtitle.Position = UDim2.new(0, 0, 0, 30)
+subtitle.Size = UDim2.new(1, -50, 0, 40)
+subtitle.Position = UDim2.fromOffset(16, 0)
 subtitle.BackgroundTransparency = 1
-subtitle.Text = "  " .. SCRIPT_AUTHOR
-subtitle.TextColor3 = Color3.fromRGB(120, 120, 140)
+subtitle.Text = SCRIPT_AUTHOR
+subtitle.TextColor3 = THEME.textDim
 subtitle.Font = Enum.Font.Code
 subtitle.TextSize = 10
 subtitle.TextXAlignment = Enum.TextXAlignment.Left
-subtitle.Parent = main
+subtitle.TextYAlignment = Enum.TextYAlignment.Bottom
+subtitle.Parent = titleBar
 
 local close = Instance.new("TextButton")
-close.Size = UDim2.fromOffset(30, 30)
-close.Position = UDim2.new(1, -30, 0, 0)
-close.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+close.Size = UDim2.fromOffset(28, 28)
+close.Position = UDim2.new(1, -36, 0, 6)
+close.BackgroundColor3 = THEME.danger
 close.BorderSizePixel = 0
 close.Text = "X"
 close.TextColor3 = Color3.fromRGB(255, 255, 255)
-close.Parent = main
-
+close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.Parent = titleBar
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
 close.MouseButton1Click:Connect(function()
     main.Visible = false
 end)
 
-local tabsBar = Instance.new("Frame")
-tabsBar.Size = UDim2.new(1, 0, 0, 30)
-tabsBar.Position = UDim2.fromOffset(0, 44)
-tabsBar.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-tabsBar.BorderSizePixel = 0
-tabsBar.Parent = main
+-- ==== БОКОВАЯ ПАНЕЛЬ ====
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0, 120, 1, -50)
+sidebar.Position = UDim2.fromOffset(8, 46)
+sidebar.BackgroundColor3 = THEME.bg2
+sidebar.BorderSizePixel = 0
+sidebar.Parent = main
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 8)
 
-local tabsLayout = Instance.new("UIListLayout")
-tabsLayout.FillDirection = Enum.FillDirection.Horizontal
-tabsLayout.Parent = tabsBar
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.Padding = UDim.new(0, 4)
+sideLayout.Parent = sidebar
+
+local sidePad = Instance.new("UIPadding")
+sidePad.PaddingTop = UDim.new(0, 8)
+sidePad.PaddingLeft = UDim.new(0, 6)
+sidePad.PaddingRight = UDim.new(0, 6)
+sidePad.Parent = sidebar
+
+-- ==== КОНТЕНТ ====
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -144, 1, -58)
+content.Position = UDim2.fromOffset(136, 46)
+content.BackgroundColor3 = THEME.bg2
+content.BorderSizePixel = 0
+content.Parent = main
+Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
 
 local pages = {}
 local tabButtons = {}
@@ -146,47 +197,43 @@ local function selectTab(name)
     end
     for tabName, btn in pairs(tabButtons) do
         if tabName == name then
-            btn.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
-            btn.TextColor3 = Color3.fromRGB(0, 255, 150)
+            btn.BackgroundColor3 = THEME.accent
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
-            btn.TextColor3 = Color3.fromRGB(150, 150, 150)
+            btn.BackgroundColor3 = THEME.bg3
+            btn.TextColor3 = THEME.textDim
         end
     end
 end
 
-local function createTab(name, displayName)
+local function createTab(name, displayName, emoji)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1/4, 0, 1, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = THEME.bg3
     btn.BorderSizePixel = 0
-    btn.Text = displayName
-    btn.TextColor3 = Color3.fromRGB(150, 150, 150)
-    btn.Font = Enum.Font.Code
+    btn.Text = "  " .. emoji .. "  " .. displayName
+    btn.TextColor3 = THEME.textDim
+    btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
-    btn.Parent = tabsBar
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.Parent = sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 
     local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -10, 1, -85)
-    page.Position = UDim2.fromOffset(5, 80)
+    page.Size = UDim2.new(1, -16, 1, -16)
+    page.Position = UDim2.fromOffset(8, 8)
     page.BackgroundTransparency = 1
     page.BorderSizePixel = 0
-    page.ScrollBarThickness = 4
-    page.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = THEME.accent
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.AutomaticCanvasSize = Enum.AutomaticSize.Y
     page.Visible = false
-    page.Parent = main
+    page.Parent = content
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 4)
+    layout.Padding = UDim.new(0, 5)
     layout.Parent = page
-
-    local padding = Instance.new("UIPadding")
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingRight = UDim.new(0, 5)
-    padding.Parent = page
 
     pages[name] = page
     tabButtons[name] = btn
@@ -196,27 +243,32 @@ local function createTab(name, displayName)
     end)
 end
 
-createTab("Visual", "Visual")
-createTab("Aimbot", "Aimbot")
-createTab("Movement", "Move")
-createTab("Misc", "Misc")
+createTab("Visual", "Visual", "👁")
+createTab("Aimbot", "Aimbot", "🎯")
+createTab("Movement", "Move", "🏃")
+createTab("Misc", "Misc", "⚙")
 
 local notify = Instance.new("TextLabel")
 notify.Size = UDim2.fromOffset(260, 40)
-notify.Position = UDim2.new(0.5, -130, 0, 40)
-notify.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
-notify.BackgroundTransparency = 0.2
+notify.Position = UDim2.new(0.5, -130, 0, 20)
+notify.BackgroundColor3 = THEME.bg2
+notify.BackgroundTransparency = 0.1
 notify.BorderSizePixel = 0
 notify.Text = ""
-notify.TextColor3 = Color3.fromRGB(0, 255, 150)
-notify.Font = Enum.Font.Code
-notify.TextSize = 16
+notify.TextColor3 = THEME.accent
+notify.Font = Enum.Font.Gotham
+notify.TextSize = 14
 notify.Visible = false
 notify.Parent = gui
+Instance.new("UICorner", notify).CornerRadius = UDim.new(0, 8)
+local notifyStroke = Instance.new("UIStroke", notify)
+notifyStroke.Color = THEME.accent
+notifyStroke.Thickness = 1
 
 function showNotify(text, color)
     notify.Text = text
-    notify.TextColor3 = color or Color3.fromRGB(0, 255, 150)
+    notify.TextColor3 = color or THEME.accent
+    notifyStroke.Color = color or THEME.accent
     notify.Visible = true
     task.spawn(function()
         task.wait(1.5)
@@ -233,7 +285,7 @@ fovCircle.Visible = false
 fovCircle.Parent = gui
 
 local fovStroke = Instance.new("UIStroke")
-fovStroke.Color = Color3.fromRGB(0, 255, 150)
+fovStroke.Color = THEME.accent
 fovStroke.Thickness = 2
 fovStroke.Transparency = 0.2
 fovStroke.Parent = fovCircle
@@ -245,7 +297,7 @@ rayParams.FilterType = Enum.RaycastFilterType.Exclude
 -- ==== NPC HIGHLIGHT ====
 local npcHighlights = {}
 local NPC_HIGHLIGHT_ENABLED = true
-local NPC_FILL_COLOR = Color3.fromRGB(0, 200, 255)
+local NPC_FILL_COLOR = Color3.fromRGB(168, 85, 247)
 local NPC_FILL_TRANSPARENCY = 0.5
 local NPC_OUTLINE_COLOR = Color3.fromRGB(255, 255, 255)
 local NPC_OUTLINE_TRANSPARENCY = 0
@@ -324,7 +376,6 @@ workspace.DescendantRemoving:Connect(function(obj)
         removeNPCHighlight(obj)
     end
 end)
--- ==== КОНЕЦ NPC HIGHLIGHT ====
 
 local function isVisible(fromPos, toPos, charToIgnore)
     rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
@@ -343,7 +394,7 @@ local function createESP(player)
     box.Parent = gui
 
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(0, 255, 140)
+    stroke.Color = THEME.accent
     stroke.Thickness = 1
     stroke.Parent = box
 
@@ -381,7 +432,7 @@ local function createESP(player)
     Instance.new("UICorner", hpBg).CornerRadius = UDim.new(1, 0)
 
     local hpFill = Instance.new("Frame")
-    hpFill.BackgroundColor3 = Color3.fromRGB(0, 255, 120)
+    hpFill.BackgroundColor3 = THEME.accent
     hpFill.BorderSizePixel = 0
     hpFill.Size = UDim2.new(1, 0, 1, 0)
     hpFill.AnchorPoint = Vector2.new(0, 1)
@@ -390,7 +441,7 @@ local function createESP(player)
     Instance.new("UICorner", hpFill).CornerRadius = UDim.new(1, 0)
 
     local tracer = Instance.new("Frame")
-    tracer.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+    tracer.BackgroundColor3 = THEME.accent
     tracer.BorderSizePixel = 0
     tracer.AnchorPoint = Vector2.new(0.5, 0)
     tracer.Size = UDim2.fromOffset(1, 0)
@@ -625,7 +676,6 @@ function toggleAutoReload()
     end
 end
 
--- ==== ПРИМЕНЕНИЕ ТОГГЛА ====
 local function applyToggle(key, value)
     Config[key] = value
     if key == "Fly" then toggleFly() end
@@ -639,25 +689,34 @@ local function applyToggle(key, value)
     if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
 end
 
--- ==== МЕНЮ ====
+-- ==== КОМПОНЕНТЫ ====
 local toggles = {}
 local bindingMode = nil
 
 local function makeToggle(page, label, key)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 28)
-    row.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    row.Size = UDim2.new(1, 0, 0, 30)
+    row.BackgroundColor3 = THEME.bg3
     row.BorderSizePixel = 0
     row.Parent = page
-    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.fromOffset(4, 18)
+    indicator.Position = UDim2.new(0, 6, 0.5, -9)
+    indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
+    indicator.BorderSizePixel = 0
+    indicator.Parent = row
+    Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
 
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -75, 1, 0)
+    btn.Size = UDim2.new(1, -80, 1, 0)
+    btn.Position = UDim2.fromOffset(16, 0)
     btn.BackgroundTransparency = 1
     btn.BorderSizePixel = 0
-    btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
-    btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
-    btn.Font = Enum.Font.Code
+    btn.Text = "  " .. label
+    btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+    btn.Font = Enum.Font.Gotham
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.ZIndex = 2
@@ -665,76 +724,76 @@ local function makeToggle(page, label, key)
     btn.Parent = row
 
     local bindBtn = Instance.new("TextButton")
-    bindBtn.Size = UDim2.fromOffset(65, 22)
-    bindBtn.Position = UDim2.new(1, -70, 0.5, -11)
-    bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+    bindBtn.Size = UDim2.fromOffset(60, 22)
+    bindBtn.Position = UDim2.new(1, -66, 0.5, -11)
+    bindBtn.BackgroundColor3 = THEME.bg2
     bindBtn.BorderSizePixel = 0
-    bindBtn.Text = "[" .. tostring(Binds[key] and Binds[key].Name or "NONE") .. "]"
-    bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+    bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
+    bindBtn.TextColor3 = THEME.accent
     bindBtn.Font = Enum.Font.Code
     bindBtn.TextSize = 11
     bindBtn.ZIndex = 3
     bindBtn.Active = true
     bindBtn.Parent = row
-    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 3)
-
-    local bindStroke = Instance.new("UIStroke", bindBtn)
-    bindStroke.Color = Color3.fromRGB(0, 200, 255)
-    bindStroke.Thickness = 1
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
+    local bs = Instance.new("UIStroke", bindBtn)
+    bs.Color = THEME.accent
+    bs.Thickness = 1
+    bs.Transparency = 0.5
 
     btn.MouseButton1Click:Connect(function()
         applyToggle(key, not Config[key])
-        btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
-        btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
+        btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+        indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
     end)
 
     bindBtn.MouseButton1Click:Connect(function()
         bindingMode = key
-        bindBtn.Text = "[...]"
-        bindBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 90)
+        bindBtn.Text = "..."
+        bindBtn.BackgroundColor3 = THEME.accent
         bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        showNotify("Нажми клавишу для: " .. label .. " (Escape = отмена)", Color3.fromRGB(0, 200, 255))
+        showNotify("Нажми клавишу: " .. label .. " (Escape = отмена)", THEME.accent)
     end)
 
-    toggles[key] = {btn = btn, label = label, bindBtn = bindBtn}
+    toggles[key] = {btn = btn, label = label, bindBtn = bindBtn, indicator = indicator}
 end
 
 local function makeSlider(page, label, min, max, default, callback)
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 0, 44)
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    frame.Size = UDim2.new(1, 0, 0, 46)
+    frame.BackgroundColor3 = THEME.bg3
     frame.BorderSizePixel = 0
     frame.Parent = page
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
 
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -20, 0, 18)
     titleLbl.Position = UDim2.fromOffset(10, 4)
     titleLbl.BackgroundTransparency = 1
     titleLbl.Text = label .. ": " .. default
-    titleLbl.TextColor3 = Color3.fromRGB(0, 255, 150)
-    titleLbl.Font = Enum.Font.Code
+    titleLbl.TextColor3 = THEME.text
+    titleLbl.Font = Enum.Font.Gotham
     titleLbl.TextSize = 13
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
     titleLbl.Parent = frame
 
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, -20, 0, 8)
-    sliderBg.Position = UDim2.new(0, 10, 1, -18)
-    sliderBg.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    sliderBg.Size = UDim2.new(1, -20, 0, 6)
+    sliderBg.Position = UDim2.new(0, 10, 1, -16)
+    sliderBg.BackgroundColor3 = THEME.bg
     sliderBg.BorderSizePixel = 0
     sliderBg.Parent = frame
     Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
 
     local fill = Instance.new("Frame")
     fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(0, 255, 140)
+    fill.BackgroundColor3 = THEME.accent
     fill.BorderSizePixel = 0
     fill.Parent = sliderBg
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
 
     local thumb = Instance.new("Frame")
-    thumb.Size = UDim2.fromOffset(16, 16)
+    thumb.Size = UDim2.fromOffset(14, 14)
     thumb.AnchorPoint = Vector2.new(0.5, 0.5)
     thumb.Position = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
     thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -813,51 +872,47 @@ makeToggle(pages.Misc, "Auto Reload", "AutoReload")
 
 selectTab("Visual")
 
--- ==== ОБРАБОТКА ВВОДА ====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-    -- Режим бинда
     if bindingMode then
         local key = bindingMode
         bindingMode = nil
         if input.KeyCode == Enum.KeyCode.Escape then
             if toggles[key] then
-                toggles[key].bindBtn.Text = "[" .. tostring(Binds[key] and Binds[key].Name or "NONE") .. "]"
-                toggles[key].bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-                toggles[key].bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+                toggles[key].bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
+                toggles[key].bindBtn.BackgroundColor3 = THEME.bg2
+                toggles[key].bindBtn.TextColor3 = THEME.accent
             end
-            showNotify("Бинд отменён", Color3.fromRGB(255, 80, 80))
+            showNotify("Бинд отменён", THEME.danger)
             return
         end
         Binds[key] = input.KeyCode
         if toggles[key] then
-            toggles[key].bindBtn.Text = "[" .. input.KeyCode.Name .. "]"
-            toggles[key].bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
-            toggles[key].bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+            toggles[key].bindBtn.Text = input.KeyCode.Name
+            toggles[key].bindBtn.BackgroundColor3 = THEME.bg2
+            toggles[key].bindBtn.TextColor3 = THEME.accent
         end
-        showNotify(string.format("Бинд: %s -> %s", key, input.KeyCode.Name), Color3.fromRGB(0, 200, 255))
+        showNotify("Бинд: " .. key .. " -> " .. input.KeyCode.Name, THEME.accent)
         return
     end
 
-    -- Меню
     if input.KeyCode == Binds.Menu then
         main.Visible = not main.Visible
         return
     end
 
-    -- Тогглы по биндам
     for key, bind in pairs(Binds) do
         if key ~= "Menu" and input.KeyCode == bind and Config[key] ~= nil then
             applyToggle(key, not Config[key])
             if toggles[key] then
                 local t = toggles[key]
-                t.btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", t.label)
-                t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
+                t.btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+                t.indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
             end
-            showNotify(string.format("[ %s: %s ]", key, Config[key] and "ON" or "OFF"),
-                Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80))
+            showNotify(key .. ": " .. (Config[key] and "ON" or "OFF"),
+                Config[key] and THEME.accent or THEME.danger)
             return
         end
     end
@@ -921,7 +976,7 @@ RunService.RenderStepped:Connect(function()
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
                 local hl = Instance.new("Highlight")
-                hl.FillColor = Color3.fromRGB(255, 50, 50)
+                hl.FillColor = THEME.accent
                 hl.FillTransparency = 0.55
                 hl.OutlineColor = Color3.fromRGB(255, 255, 255)
                 hl.OutlineTransparency = 0
@@ -948,7 +1003,7 @@ RunService.RenderStepped:Connect(function()
             esp.box.Size = UDim2.fromOffset(width, height)
 
             local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local boxColor = ratio > 0.6 and Color3.fromRGB(0, 255, 140)
+            local boxColor = ratio > 0.6 and Color3.fromRGB(168, 85, 247)
                 or ratio > 0.3 and Color3.fromRGB(255, 220, 50)
                 or Color3.fromRGB(255, 70, 70)
             esp.stroke.Color = boxColor
@@ -1004,7 +1059,7 @@ RunService.RenderStepped:Connect(function()
     end
 
     if Config.ShowFOV and Config.Aimbot then
-        fovStroke.Color = closestTarget and Color3.fromRGB(255, 50, 50) or Color3.fromRGB(0, 255, 150)
+        fovStroke.Color = closestTarget and THEME.danger or THEME.accent
     end
 
     if Config.Aimbot and closestTarget then
@@ -1019,4 +1074,4 @@ end)
 
 if Config.AntiAFK then toggleAntiAFK() end
 
-showNotify(SCRIPT_NAME .. " загружен! " .. Binds.Menu.Name .. " = меню", Color3.fromRGB(0, 255, 150))
+showNotify(SCRIPT_NAME .. " загружен! " .. Binds.Menu.Name .. " = меню", THEME.accent)
