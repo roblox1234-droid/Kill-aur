@@ -50,19 +50,17 @@ local Config = {
     Aimbot = false, ShowFOV = true, FOV = 100,
     VisibleOnly = true,
     FIRE_RATE = 0.1, AimStrength = 0.85,
-    AutoFire = false,          -- АВТО-СТРЕЛЬБА
-    AutoFireDelay = 0.1,       -- задержка между выстрелами
+    AutoFire = false,
+    AutoFireDelay = 0.1,
     DashAimbot = true,
     DashThreshold = 40,
     DashLockTime = 0.8,
     DashIgnoreFOV = true,
     DashHighlight = true,
-    -- KILL AURA
     KillAura = false,
     KillAuraRange = 15,
     KillAuraDelay = 0.15,
     KillAuraRotate = true,
-    -- Движение
     Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
@@ -98,6 +96,7 @@ gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
+-- ==== INFO LABEL (FPS/Ping) ====
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.fromOffset(140, 44)
 infoLabel.Position = UDim2.new(1, -150, 0, 10)
@@ -151,13 +150,27 @@ npcListContainer.Parent = npcListFrame
 
 local fps, frames, lastTime = 0, 0, tick()
 
+-- ==== КНОПКА ОТКРЫТИЯ МЕНЮ ====
+local openBtn = Instance.new("TextButton")
+openBtn.Size = UDim2.fromOffset(100, 32)
+openBtn.Position = UDim2.new(0, 10, 0, 440)
+openBtn.BackgroundColor3 = THEME.accent
+openBtn.BorderSizePixel = 0
+openBtn.Text = "MENU"
+openBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 14
+openBtn.ZIndex = 3000
+openBtn.Parent = gui
+Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0, 6)
+
 -- ==== ГЛАВНОЕ ОКНО ====
 local main = Instance.new("Frame")
 main.Size = UDim2.fromOffset(520, 440)
 main.Position = UDim2.new(0.5, -260, 0.5, -220)
 main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
-main.Visible = false
+main.Visible = true   -- ОТКРЫТО СРАЗУ
 main.Active = true
 main.Draggable = true
 main.ZIndex = 1000
@@ -166,6 +179,10 @@ Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
 local mainStroke = Instance.new("UIStroke", main)
 mainStroke.Color = THEME.border
 mainStroke.Thickness = 1
+
+openBtn.MouseButton1Click:Connect(function()
+    main.Visible = not main.Visible
+end)
 
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 40)
@@ -499,13 +516,6 @@ end)
 -- ==== NPC LIST ====
 local npcRows = {}
 
-local STATIC_BLACKLIST = {
-    Fountain1 = true, Fountain2 = true, Fountain3 = true,
-    Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
-    SealedGate = true, SealedGate2 = true, SealedGate3 = true, SealedGate4 = true,
-    FogSealedGate = true,
-}
-
 local function getNPCPosition(obj)
     local r = obj:FindFirstChild("HumanoidRootPart")
         or obj:FindFirstChild("Torso")
@@ -518,12 +528,6 @@ local function getNPCPosition(obj)
         if d:IsA("BasePart") then return d.Position end
     end
     return nil
-end
-
-local function teleportTo(pos)
-    local char = LP.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if root then root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end
 end
 
 task.spawn(function()
@@ -544,24 +548,6 @@ task.spawn(function()
         end
 
         local list = {}
-
-        local mapFolder = workspace:FindFirstChild("Map")
-        if mapFolder then
-            local sf = mapFolder:FindFirstChild("StaticNPCs")
-            if sf then
-                for _, obj in ipairs(sf:GetChildren()) do
-                    if obj:IsA("Model") and not STATIC_BLACKLIST[obj.Name] then
-                        local pos = getNPCPosition(obj)
-                        if pos then
-                            local d = (pos - myPos).Magnitude
-                            if d < NPC_LIST_RADIUS then
-                                table.insert(list, {model = obj, dist = d, tag = "NPC"})
-                            end
-                        end
-                    end
-                end
-            end
-        end
 
         local cf = workspace:FindFirstChild("Characters")
         if cf then
@@ -931,17 +917,14 @@ local function startKillAura()
         local targets = getAuraTargets()
         if #targets == 0 then return end
 
-        -- Сортируем по дистанции
         table.sort(targets, function(a, b) return a.dist < b.dist end)
         local target = targets[1]
 
-        -- Поворачиваем камеру на цель
         if Config.KillAuraRotate then
             local camPos = Camera.CFrame.Position
             Camera.CFrame = CFrame.new(camPos, target.root.Position)
         end
 
-        -- Активируем tool
         local char = LP.Character
         local tool = char and char:FindFirstChildOfClass("Tool")
         if tool then
@@ -1161,7 +1144,7 @@ makeToggle(pages.Combat, "Dash Aimbot", "DashAimbot")
 makeToggle(pages.Combat, "Dash Ignore FOV", "DashIgnoreFOV")
 makeToggle(pages.Combat, "Show FOV", "ShowFOV")
 makeToggle(pages.Combat, "Visible Only", "VisibleOnly")
-makeToggle(pages.Combat, "⚔ Kill Aura", "KillAura")
+makeToggle(pages.Combat, "Kill Aura", "KillAura")
 makeSlider(pages.Combat, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
 makeSlider(pages.Combat, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
 makeSlider(pages.Combat, "Dash Sensitivity", 10, 200, Config.DashThreshold, function(v) Config.DashThreshold = v end)
@@ -1214,7 +1197,8 @@ UIS.InputBegan:Connect(function(input, gp)
         return
     end
 
-    if input.KeyCode == Binds.Menu then
+    -- Открытие меню (несколько клавиш)
+    if input.KeyCode == Binds.Menu or input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.M then
         main.Visible = not main.Visible
         return
     end
@@ -1304,7 +1288,6 @@ RunService.RenderStepped:Connect(function()
 
         local distToPlayer = (camPos - root.Position).Magnitude
 
-        -- CHAMS
         if Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
@@ -1340,13 +1323,11 @@ RunService.RenderStepped:Connect(function()
                 boxColor = Color3.fromRGB(255, 255, 0)
             end
 
-            -- BOX
             esp.box.Visible = Config.Box
             esp.box.Color = boxColor
             esp.box.Position = Vector2.new(x, y)
             esp.box.Size = Vector2.new(width, height)
 
-            -- NAME
             esp.nameLbl.Visible = Config.Name
             if Config.Name then
                 esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
@@ -1354,7 +1335,6 @@ RunService.RenderStepped:Connect(function()
                 esp.nameLbl.Color = boxColor
             end
 
-            -- TOOL
             esp.toolLbl.Visible = Config.Tool
             if Config.Tool then
                 local held = char:FindFirstChildOfClass("Tool")
@@ -1363,7 +1343,6 @@ RunService.RenderStepped:Connect(function()
                 esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
             end
 
-            -- HP BAR
             esp.hpBg.Visible = Config.HP
             esp.hpFill.Visible = Config.HP
             if Config.HP then
@@ -1376,7 +1355,6 @@ RunService.RenderStepped:Connect(function()
                     or Color3.fromRGB(255, 50, 50)
             end
 
-            -- TRACERS
             esp.tracer.Visible = Config.Tracers
             if Config.Tracers then
                 esp.tracer.Color = boxColor
@@ -1392,7 +1370,6 @@ RunService.RenderStepped:Connect(function()
             esp.tracer.Visible = false
         end
 
-        -- AIMBOT TARGETING
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
@@ -1434,15 +1411,13 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- AIMBOT
     if Config.Aimbot and finalTarget then
         Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
 
-        -- AUTO FIRE
         if Config.AutoFire then
             if tick() - lastShot >= Config.AutoFireDelay then
                 lastShot = tick()
-                local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+                local tool = LP.Character and LP.Character:FindFirstChild("Tool")
                 if tool then
                     pcall(function() tool:Activate() end)
                 end
@@ -1453,7 +1428,7 @@ end)
 
 if Config.AntiAFK then toggleAntiAFK() end
 
-showNotify(SCRIPT_NAME .. " загружен! Delete = меню", THEME.accent)
-print("[NINJA] Загружено. Delete = меню")
-print("[NINJA] ESP на Drawing API")
+showNotify(SCRIPT_NAME .. " загружен! Delete / M / RShift = меню", THEME.accent)
+print("[NINJA] Загружено. Меню: Delete / M / RightShift")
+print("[NINJA] ESP: Drawing API")
 print("[NINJA] Auto Fire: X | Kill Aura: K")
