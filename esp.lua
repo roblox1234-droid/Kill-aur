@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA CHEAT + DRAWING ESP + AUTOFIRE + KILL AURA
+-- NINJA CHEAT + CHAMS MODES + ADVANCED AUTOFIRE + KILL AURA
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -44,23 +44,33 @@ end
 local Config = {
     ESP = true, Box = true, Name = true, HP = true, Tool = true,
     Chams = true, Tracers = false,
+    ChamsMode = "Both",  -- "Both" | "Fill" | "Outline" | "Neon" | "HP"
     TeamCheck = true,
     DistanceColors = true,
     DistanceThreshold = 20,
     Aimbot = false, ShowFOV = true, FOV = 100,
     VisibleOnly = true,
     FIRE_RATE = 0.1, AimStrength = 0.85,
+    -- Auto-Fire
     AutoFire = false,
     AutoFireDelay = 0.1,
+    AutoFireMode = "Auto",  -- "Single" | "Burst" | "Auto"
+    AutoFireOnlyWithAimbot = false,
+    AutoFireBurstCount = 3,
+    AutoFireRange = 500,
+    AutoFireRequireTarget = true,
+    -- Dash
     DashAimbot = true,
     DashThreshold = 40,
     DashLockTime = 0.8,
     DashIgnoreFOV = true,
     DashHighlight = true,
+    -- Kill Aura
     KillAura = false,
     KillAuraRange = 15,
     KillAuraDelay = 0.15,
     KillAuraRotate = true,
+    -- Movement
     Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
@@ -96,7 +106,7 @@ gui.DisplayOrder = 999999
 gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = LP:WaitForChild("PlayerGui")
 
--- ==== INFO LABEL (FPS/Ping) ====
+-- ==== INFO ====
 local infoLabel = Instance.new("TextLabel")
 infoLabel.Size = UDim2.fromOffset(140, 44)
 infoLabel.Position = UDim2.new(1, -150, 0, 10)
@@ -150,7 +160,7 @@ npcListContainer.Parent = npcListFrame
 
 local fps, frames, lastTime = 0, 0, tick()
 
--- ==== КНОПКА ОТКРЫТИЯ МЕНЮ ====
+-- ==== MENU BUTTON ====
 local openBtn = Instance.new("TextButton")
 openBtn.Size = UDim2.fromOffset(100, 32)
 openBtn.Position = UDim2.new(0, 10, 0, 440)
@@ -164,13 +174,13 @@ openBtn.ZIndex = 3000
 openBtn.Parent = gui
 Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0, 6)
 
--- ==== ГЛАВНОЕ ОКНО ====
+-- ==== MAIN WINDOW ====
 local main = Instance.new("Frame")
 main.Size = UDim2.fromOffset(520, 440)
 main.Position = UDim2.new(0.5, -260, 0.5, -220)
 main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
-main.Visible = true   -- ОТКРЫТО СРАЗУ
+main.Visible = true
 main.Active = true
 main.Draggable = true
 main.ZIndex = 1000
@@ -352,7 +362,7 @@ function showNotify(text, color)
     end)
 end
 
--- FOV Circle через Drawing
+-- FOV Circle
 local fovCircle = Drawing.new("Circle")
 fovCircle.Thickness = 1
 fovCircle.Color = Color3.fromRGB(168, 85, 247)
@@ -595,7 +605,7 @@ task.spawn(function()
     end
 end)
 
--- ==== ESP через DRAWING ====
+-- ==== ВИДИМОСТЬ ====
 local function isVisible(fromPos, toPos, charToIgnore)
     rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
     local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
@@ -604,6 +614,7 @@ end
 
 local cache = {}
 
+-- ==== СОЗДАНИЕ ESP ====
 local function createESP(player)
     if player == LP then return end
     if cache[player] then return end
@@ -652,9 +663,10 @@ local function createESP(player)
 
     if player.Character and Config.Chams then
         local hl = Instance.new("Highlight")
-        hl.FillTransparency = 0.5
-        hl.OutlineColor = Color3.fromRGB(0, 0, 0)
-        hl.OutlineTransparency = 0.5
+        hl.FillColor = getESPColor(player, 0)
+        hl.FillTransparency = 0.55
+        hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        hl.OutlineTransparency = 0
         hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         hl.Adornee = player.Character
         hl.Parent = player.Character
@@ -666,9 +678,10 @@ local function createESP(player)
         if d.highlight then d.highlight:Destroy() end
         if Config.Chams then
             local hl = Instance.new("Highlight")
-            hl.FillTransparency = 0.5
-            hl.OutlineColor = Color3.fromRGB(0, 0, 0)
-            hl.OutlineTransparency = 0.5
+            hl.FillColor = getESPColor(player, 0)
+            hl.FillTransparency = 0.55
+            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.OutlineTransparency = 0
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             hl.Adornee = char
             hl.Parent = char
@@ -971,7 +984,7 @@ local function applyToggle(key, value)
     end
 end
 
--- ==== МЕНЮ ====
+-- ==== КОМПОНЕНТЫ МЕНЮ ====
 local toggles = {}
 local bindingMode = nil
 
@@ -1122,6 +1135,7 @@ local function makeSlider(page, label, min, max, default, callback)
     end)
 end
 
+-- ==== ЗАПОЛНЕНИЕ МЕНЮ ====
 makeToggle(pages.Visual, "ESP Master", "ESP")
 makeToggle(pages.Visual, "Box", "Box")
 makeToggle(pages.Visual, "Name + Dist", "Name")
@@ -1138,8 +1152,38 @@ makeToggle(pages.Visual, "NPC Highlight", "NPCHighlight")
 makeToggle(pages.Visual, "NPC List", "NPCList")
 makeToggle(pages.Visual, "Dash Highlight", "DashHighlight")
 
+-- Chams Mode
+local chamsModes = {"Both", "Fill", "Outline", "Neon", "HP"}
+local chamsModeBtn = Instance.new("TextButton")
+chamsModeBtn.Size = UDim2.new(1, 0, 0, 30)
+chamsModeBtn.BackgroundColor3 = THEME.bg3
+chamsModeBtn.BorderSizePixel = 0
+chamsModeBtn.Text = "  Chams Mode: " .. Config.ChamsMode
+chamsModeBtn.TextColor3 = THEME.accent
+chamsModeBtn.Font = Enum.Font.Gotham
+chamsModeBtn.TextSize = 13
+chamsModeBtn.TextXAlignment = Enum.TextXAlignment.Left
+chamsModeBtn.ZIndex = 1003
+chamsModeBtn.Parent = pages.Visual
+Instance.new("UICorner", chamsModeBtn).CornerRadius = UDim.new(0, 6)
+
+chamsModeBtn.MouseButton1Click:Connect(function()
+    local currentIndex = 1
+    for i, m in ipairs(chamsModes) do
+        if m == Config.ChamsMode then currentIndex = i break end
+    end
+    currentIndex = currentIndex + 1
+    if currentIndex > #chamsModes then currentIndex = 1 end
+    Config.ChamsMode = chamsModes[currentIndex]
+    chamsModeBtn.Text = "  Chams Mode: " .. Config.ChamsMode
+    showNotify("Chams: " .. Config.ChamsMode, THEME.accent)
+end)
+
+-- Combat
 makeToggle(pages.Combat, "Aimbot", "Aimbot")
 makeToggle(pages.Combat, "Auto Fire", "AutoFire")
+makeToggle(pages.Combat, "Only with Aimbot", "AutoFireOnlyWithAimbot")
+makeToggle(pages.Combat, "Require Target", "AutoFireRequireTarget")
 makeToggle(pages.Combat, "Dash Aimbot", "DashAimbot")
 makeToggle(pages.Combat, "Dash Ignore FOV", "DashIgnoreFOV")
 makeToggle(pages.Combat, "Show FOV", "ShowFOV")
@@ -1151,6 +1195,34 @@ makeSlider(pages.Combat, "Dash Sensitivity", 10, 200, Config.DashThreshold, func
 makeSlider(pages.Combat, "Dash Lock (sec x10)", 1, 30, Config.DashLockTime * 10, function(v) Config.DashLockTime = v / 10 end)
 makeSlider(pages.Combat, "Kill Aura Range", 5, 50, Config.KillAuraRange, function(v) Config.KillAuraRange = v end)
 makeSlider(pages.Combat, "Auto Fire Delay x100", 1, 100, Config.AutoFireDelay * 100, function(v) Config.AutoFireDelay = v / 100 end)
+makeSlider(pages.Combat, "Burst Count", 1, 10, Config.AutoFireBurstCount, function(v) Config.AutoFireBurstCount = v end)
+
+-- Auto-Fire Mode
+local afModes = {"Single", "Burst", "Auto"}
+local afModeBtn = Instance.new("TextButton")
+afModeBtn.Size = UDim2.new(1, 0, 0, 30)
+afModeBtn.BackgroundColor3 = THEME.bg3
+afModeBtn.BorderSizePixel = 0
+afModeBtn.Text = "  Auto-Fire Mode: " .. Config.AutoFireMode
+afModeBtn.TextColor3 = THEME.accent
+afModeBtn.Font = Enum.Font.Gotham
+afModeBtn.TextSize = 13
+afModeBtn.TextXAlignment = Enum.TextXAlignment.Left
+afModeBtn.ZIndex = 1003
+afModeBtn.Parent = pages.Combat
+Instance.new("UICorner", afModeBtn).CornerRadius = UDim.new(0, 6)
+
+afModeBtn.MouseButton1Click:Connect(function()
+    local idx = 1
+    for i, m in ipairs(afModes) do
+        if m == Config.AutoFireMode then idx = i break end
+    end
+    idx = idx + 1
+    if idx > #afModes then idx = 1 end
+    Config.AutoFireMode = afModes[idx]
+    afModeBtn.Text = "  Auto-Fire Mode: " .. Config.AutoFireMode
+    showNotify("Auto-Fire: " .. Config.AutoFireMode, THEME.accent)
+end)
 
 makeToggle(pages.Movement, "Fly", "Fly")
 makeToggle(pages.Movement, "Noclip", "Noclip")
@@ -1171,9 +1243,132 @@ makeToggle(pages.Misc, "Auto Reload", "AutoReload")
 
 selectTab("Visual")
 
+-- ==== AUTO-FIRE SYSTEM ====
+local lastShot = 0
+local burstShotsLeft = 0
+local burstStart = 0
+local burstDelay = 0.05
+
+local function getClosestVisibleTarget(maxRange)
+    local closest = nil
+    local shortest = math.huge
+    local camPos = Camera.CFrame.Position
+    local centerX = Camera.ViewportSize.X / 2
+    local centerY = Camera.ViewportSize.Y / 2
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local char = player.Character
+            local head = char:FindFirstChild("Head")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local hum = char:FindFirstChildOfClass("Humanoid")
+
+            if head and root and hum and hum.Health > 0 then
+                local sameTeam = false
+                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                    sameTeam = true
+                end
+
+                if not sameTeam then
+                    local dist = (camPos - root.Position).Magnitude
+                    if dist <= maxRange then
+                        local sp, on = Camera:WorldToViewportPoint(head.Position)
+                        if on and sp.Z > 0 then
+                            local dx = sp.X - centerX
+                            local dy = sp.Y - centerY
+                            local screenDist = math.sqrt(dx * dx + dy * dy)
+
+                            if screenDist < Config.FOV then
+                                if Config.VisibleOnly then
+                                    if isVisible(camPos, head.Position, char) then
+                                        if dist < shortest then
+                                            shortest = dist
+                                            closest = head
+                                        end
+                                    end
+                                else
+                                    if dist < shortest then
+                                        shortest = dist
+                                        closest = head
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function fireOnce()
+    local char = LP.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if tool then
+        pcall(function() tool:Activate() end)
+    end
+end
+
+local function processAutoFire()
+    if not Config.AutoFire then
+        burstShotsLeft = 0
+        return
+    end
+
+    if Config.AutoFireOnlyWithAimbot and not Config.Aimbot then return end
+
+    local target = nil
+    if Config.AutoFireRequireTarget then
+        target = getClosestVisibleTarget(Config.AutoFireRange)
+        if not target then return end
+    end
+
+    local now = tick()
+
+    if Config.AutoFireMode == "Burst" then
+        if burstShotsLeft > 0 then
+            if now - burstStart >= burstDelay then
+                fireOnce()
+                burstShotsLeft = burstShotsLeft - 1
+                burstStart = now
+            end
+        else
+            if now - lastShot >= Config.AutoFireDelay then
+                lastShot = now
+                burstShotsLeft = Config.AutoFireBurstCount
+                burstStart = now
+                fireOnce()
+                burstShotsLeft = burstShotsLeft - 1
+            end
+        end
+        return
+    end
+
+    if Config.AutoFireMode == "Single" then return end
+
+    if now - lastShot >= Config.AutoFireDelay then
+        lastShot = now
+        fireOnce()
+    end
+end
+
+-- ==== INPUT ====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+    -- Single Auto-Fire
+    if Config.AutoFire and Config.AutoFireMode == "Single" then
+        if input.KeyCode == Enum.KeyCode.X then
+            local target = getClosestVisibleTarget(Config.AutoFireRange)
+            if target or not Config.AutoFireRequireTarget then
+                fireOnce()
+            end
+            return
+        end
+    end
 
     if bindingMode then
         local key = bindingMode
@@ -1197,7 +1392,6 @@ UIS.InputBegan:Connect(function(input, gp)
         return
     end
 
-    -- Открытие меню (несколько клавиш)
     if input.KeyCode == Binds.Menu or input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.M then
         main.Visible = not main.Visible
         return
@@ -1230,8 +1424,6 @@ LP.CharacterAdded:Connect(function()
 end)
 
 -- ==== MAIN LOOP ====
-local lastShot = 0
-
 RunService.RenderStepped:Connect(function()
     frames += 1
     if tick() - lastTime >= 1 then
@@ -1262,173 +1454,210 @@ RunService.RenderStepped:Connect(function()
         fovCircle.Visible = false
     end
 
-    if not Config.ESP and not Config.Aimbot then return end
+    if Config.ESP or Config.Aimbot then
+        local vpSize = Camera.ViewportSize
+        local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
+        local closestTarget, shortest = nil, Config.FOV
+        local dashTarget = nil
+        local camPos = Camera.CFrame.Position
 
-    local vpSize = Camera.ViewportSize
-    local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
-    local closestTarget, shortest = nil, Config.FOV
-    local dashTarget = nil
-    local camPos = Camera.CFrame.Position
+        for player, esp in pairs(cache) do
+            local char = player.Character
+            local head = char and char:FindFirstChild("Head")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-    for player, esp in pairs(cache) do
-        local char = player.Character
-        local head = char and char:FindFirstChild("Head")
-        local root = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
+            if not (head and root and hum and hum.Health > 0) then
+                esp.box.Visible = false
+                esp.nameLbl.Visible = false
+                esp.toolLbl.Visible = false
+                esp.hpBg.Visible = false
+                esp.hpFill.Visible = false
+                esp.tracer.Visible = false
+            else
+                local distToPlayer = (camPos - root.Position).Magnitude
 
-        if not (head and root and hum and hum.Health > 0) then
-            esp.box.Visible = false
-            esp.nameLbl.Visible = false
-            esp.toolLbl.Visible = false
-            esp.hpBg.Visible = false
-            esp.hpFill.Visible = false
-            esp.tracer.Visible = false
-            continue
+                -- УМНАЯ ПОДСВЕТКА
+                if Config.Chams then
+                    if not esp.highlight or esp.highlight.Parent ~= char then
+                        if esp.highlight then esp.highlight:Destroy() end
+                        local hl = Instance.new("Highlight")
+                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                        hl.Adornee = char
+                        hl.Parent = char
+                        esp.highlight = hl
+                    end
+
+                    local baseColor = getESPColor(player, distToPlayer)
+                    local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+
+                    if isDashing then
+                        local pulse = 0.5 + 0.5 * math.sin(tick() * 15)
+                        esp.highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                        esp.highlight.FillTransparency = 0.3 + pulse * 0.3
+                        esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+                        esp.highlight.OutlineTransparency = 0
+                    elseif Config.ChamsMode == "HP" then
+                        local hpRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        if hpRatio > 0.7 then
+                            esp.highlight.FillColor = Color3.fromRGB(0, 255, 100)
+                            esp.highlight.FillTransparency = 0.6
+                            esp.highlight.OutlineColor = Color3.fromRGB(0, 255, 100)
+                            esp.highlight.OutlineTransparency = 0.2
+                        elseif hpRatio > 0.35 then
+                            esp.highlight.FillColor = Color3.fromRGB(255, 220, 0)
+                            esp.highlight.FillTransparency = 0.5
+                            esp.highlight.OutlineColor = Color3.fromRGB(255, 220, 0)
+                            esp.highlight.OutlineTransparency = 0.1
+                        else
+                            local pulse = 0.5 + 0.5 * math.sin(tick() * 10)
+                            esp.highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                            esp.highlight.FillTransparency = 0.2 + pulse * 0.2
+                            esp.highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+                            esp.highlight.OutlineTransparency = 0
+                        end
+                    elseif Config.ChamsMode == "Fill" then
+                        esp.highlight.FillColor = baseColor
+                        esp.highlight.FillTransparency = 0.45
+                        esp.highlight.OutlineTransparency = 1
+                    elseif Config.ChamsMode == "Outline" then
+                        esp.highlight.FillTransparency = 1
+                        esp.highlight.OutlineColor = baseColor
+                        esp.highlight.OutlineTransparency = 0
+                    elseif Config.ChamsMode == "Neon" then
+                        esp.highlight.FillColor = Color3.fromRGB(0, 0, 0)
+                        esp.highlight.FillTransparency = 0.7
+                        esp.highlight.OutlineColor = baseColor
+                        esp.highlight.OutlineTransparency = 0
+                    else
+                        esp.highlight.FillColor = baseColor
+                        esp.highlight.FillTransparency = 0.55
+                        esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                        esp.highlight.OutlineTransparency = 0
+                    end
+                elseif esp.highlight then
+                    esp.highlight:Destroy()
+                    esp.highlight = nil
+                end
+
+                local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
+                local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+                local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
+
+                if onScreen and Config.ESP then
+                    local height = math.abs(botPos.Y - topPos.Y)
+                    local width = math.max(height * 0.55, 15)
+                    local x = topPos.X - width / 2
+                    local y = topPos.Y
+
+                    local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    local boxColor = getESPColor(player, distToPlayer)
+
+                    if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
+                        boxColor = Color3.fromRGB(255, 255, 0)
+                    end
+
+                    esp.box.Visible = Config.Box
+                    esp.box.Color = boxColor
+                    esp.box.Position = Vector2.new(x, y)
+                    esp.box.Size = Vector2.new(width, height)
+
+                    esp.nameLbl.Visible = Config.Name
+                    if Config.Name then
+                        esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
+                        esp.nameLbl.Position = Vector2.new(topPos.X, y - 18)
+                        esp.nameLbl.Color = boxColor
+                    end
+
+                    esp.toolLbl.Visible = Config.Tool
+                    if Config.Tool then
+                        local held = char:FindFirstChildOfClass("Tool")
+                        esp.toolLbl.Text = held and held.Name or ""
+                        esp.toolLbl.Position = Vector2.new(topPos.X, y + height + 2)
+                        esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
+                    end
+
+                    esp.hpBg.Visible = Config.HP
+                    esp.hpFill.Visible = Config.HP
+                    if Config.HP then
+                        esp.hpBg.Position = Vector2.new(x - 6, y)
+                        esp.hpBg.Size = Vector2.new(3, height)
+                        esp.hpFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
+                        esp.hpFill.Size = Vector2.new(3, height * ratio)
+                        esp.hpFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
+                            or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
+                            or Color3.fromRGB(255, 50, 50)
+                    end
+
+                    esp.tracer.Visible = Config.Tracers
+                    if Config.Tracers then
+                        esp.tracer.Color = boxColor
+                        esp.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
+                        esp.tracer.To = Vector2.new(topPos.X, botPos.Y)
+                    end
+                else
+                    esp.box.Visible = false
+                    esp.nameLbl.Visible = false
+                    esp.toolLbl.Visible = false
+                    esp.hpBg.Visible = false
+                    esp.hpFill.Visible = false
+                    esp.tracer.Visible = false
+                end
+
+                if Config.Aimbot then
+                    local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
+                    if headOn and headScreen.Z > 0 then
+                        local dx = headScreen.X - centerX
+                        local dy = headScreen.Y - centerY
+                        local d = (dx*dx + dy*dy) ^ 0.5
+
+                        local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+
+                        local sameTeam = false
+                        if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                            sameTeam = true
+                        end
+
+                        local canAim = not sameTeam
+                        if canAim and Config.VisibleOnly then
+                            canAim = isVisible(camPos, head.Position, char)
+                        end
+
+                        if canAim and isDashing and Config.DashAimbot then
+                            dashTarget = head
+                        end
+
+                        if canAim and d < shortest then
+                            shortest = d
+                            closestTarget = head
+                        end
+                    end
+                end
+            end
         end
 
-        local distToPlayer = (camPos - root.Position).Magnitude
+        local finalTarget = dashTarget or closestTarget
 
-        if Config.Chams then
-            if not esp.highlight or esp.highlight.Parent ~= char then
-                if esp.highlight then esp.highlight:Destroy() end
-                local hl = Instance.new("Highlight")
-                hl.FillTransparency = 0.5
-                hl.OutlineColor = Color3.fromRGB(0, 0, 0)
-                hl.OutlineTransparency = 0.5
-                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                hl.Adornee = char
-                hl.Parent = char
-                esp.highlight = hl
+        if Config.ShowFOV and Config.Aimbot then
+            if finalTarget then
+                fovCircle.Color = THEME.danger
+            else
+                fovCircle.Color = THEME.accent
             end
-            esp.highlight.FillColor = getESPColor(player, distToPlayer)
-        elseif esp.highlight then
-            esp.highlight:Destroy()
-            esp.highlight = nil
         end
 
-        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
-        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
-        local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
-
-        if onScreen and Config.ESP then
-            local height = math.abs(botPos.Y - topPos.Y)
-            local width = math.max(height * 0.55, 15)
-            local x = topPos.X - width / 2
-            local y = topPos.Y
-
-            local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local boxColor = getESPColor(player, distToPlayer)
-
-            if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
-                boxColor = Color3.fromRGB(255, 255, 0)
-            end
-
-            esp.box.Visible = Config.Box
-            esp.box.Color = boxColor
-            esp.box.Position = Vector2.new(x, y)
-            esp.box.Size = Vector2.new(width, height)
-
-            esp.nameLbl.Visible = Config.Name
-            if Config.Name then
-                esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
-                esp.nameLbl.Position = Vector2.new(topPos.X, y - 18)
-                esp.nameLbl.Color = boxColor
-            end
-
-            esp.toolLbl.Visible = Config.Tool
-            if Config.Tool then
-                local held = char:FindFirstChildOfClass("Tool")
-                esp.toolLbl.Text = held and held.Name or ""
-                esp.toolLbl.Position = Vector2.new(topPos.X, y + height + 2)
-                esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
-            end
-
-            esp.hpBg.Visible = Config.HP
-            esp.hpFill.Visible = Config.HP
-            if Config.HP then
-                esp.hpBg.Position = Vector2.new(x - 6, y)
-                esp.hpBg.Size = Vector2.new(3, height)
-                esp.hpFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
-                esp.hpFill.Size = Vector2.new(3, height * ratio)
-                esp.hpFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
-                    or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
-                    or Color3.fromRGB(255, 50, 50)
-            end
-
-            esp.tracer.Visible = Config.Tracers
-            if Config.Tracers then
-                esp.tracer.Color = boxColor
-                esp.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
-                esp.tracer.To = Vector2.new(topPos.X, botPos.Y)
-            end
-        else
-            esp.box.Visible = false
-            esp.nameLbl.Visible = false
-            esp.toolLbl.Visible = false
-            esp.hpBg.Visible = false
-            esp.hpFill.Visible = false
-            esp.tracer.Visible = false
-        end
-
-        if Config.Aimbot then
-            local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
-            if headOn and headScreen.Z > 0 then
-                local dx = headScreen.X - centerX
-                local dy = headScreen.Y - centerY
-                local d = (dx*dx + dy*dy) ^ 0.5
-
-                local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
-
-                local sameTeam = false
-                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
-                    sameTeam = true
-                end
-
-                local canAim = not sameTeam
-                if canAim and Config.VisibleOnly then
-                    canAim = isVisible(camPos, head.Position, char)
-                end
-
-                if canAim and isDashing and Config.DashAimbot then
-                    dashTarget = head
-                end
-
-                if canAim and d < shortest then
-                    shortest = d
-                    closestTarget = head
-                end
-            end
+        if Config.Aimbot and finalTarget then
+            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
         end
     end
 
-    local finalTarget = dashTarget or closestTarget
-
-    if Config.ShowFOV and Config.Aimbot then
-        if finalTarget then
-            fovCircle.Color = THEME.danger
-        else
-            fovCircle.Color = THEME.accent
-        end
-    end
-
-    if Config.Aimbot and finalTarget then
-        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
-
-        if Config.AutoFire then
-            if tick() - lastShot >= Config.AutoFireDelay then
-                lastShot = tick()
-                local tool = LP.Character and LP.Character:FindFirstChild("Tool")
-                if tool then
-                    pcall(function() tool:Activate() end)
-                end
-            end
-        end
-    end
+    -- AUTO FIRE
+    processAutoFire()
 end)
 
 if Config.AntiAFK then toggleAntiAFK() end
 
-showNotify(SCRIPT_NAME .. " загружен! Delete / M / RShift = меню", THEME.accent)
-print("[NINJA] Загружено. Меню: Delete / M / RightShift")
-print("[NINJA] ESP: Drawing API")
-print("[NINJA] Auto Fire: X | Kill Aura: K")
+showNotify(SCRIPT_NAME .. " загружен! M / Delete = меню", THEME.accent)
+print("[NINJA] Загружено")
+print("[NINJA] Chams Mode: " .. Config.ChamsMode)
+print("[NINJA] Auto-Fire Mode: " .. Config.AutoFireMode)
