@@ -1,5 +1,5 @@
 -- ============================================
--- CHEAT SCRIPT FOR EXECUTOR
+-- CHEAT SCRIPT FOR EXECUTOR + NPC HIGHLIGHT
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -29,6 +29,7 @@ local Config = {
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
     AntiAFK = true, Fullbright = false, AutoReload = false,
+    NPCHighlight = true,
 }
 
 local Keybinds = {
@@ -216,6 +217,90 @@ Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
+-- ==== NPC HIGHLIGHT ====
+local npcHighlights = {}
+local NPC_HIGHLIGHT_ENABLED = true
+local NPC_FILL_COLOR = Color3.fromRGB(0, 200, 255)
+local NPC_FILL_TRANSPARENCY = 0.5
+local NPC_OUTLINE_COLOR = Color3.fromRGB(255, 255, 255)
+local NPC_OUTLINE_TRANSPARENCY = 0
+
+local function isNPC(model)
+    if not model:IsA("Model") then return false end
+    if model == LP.Character then return false end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    local plr = Players:GetPlayerFromCharacter(model)
+    if plr then return false end
+    return true
+end
+
+local function addNPCHighlight(model)
+    if not NPC_HIGHLIGHT_ENABLED then return end
+    if npcHighlights[model] then return end
+    if not isNPC(model) then return end
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "NPCHighlight"
+    hl.Adornee = model
+    hl.FillColor = NPC_FILL_COLOR
+    hl.FillTransparency = NPC_FILL_TRANSPARENCY
+    hl.OutlineColor = NPC_OUTLINE_COLOR
+    hl.OutlineTransparency = NPC_OUTLINE_TRANSPARENCY
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Enabled = true
+    hl.Parent = model
+
+    npcHighlights[model] = hl
+end
+
+local function removeNPCHighlight(model)
+    if npcHighlights[model] then
+        npcHighlights[model]:Destroy()
+        npcHighlights[model] = nil
+    end
+end
+
+local function scanNPCs()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and isNPC(obj) then
+            addNPCHighlight(obj)
+        end
+    end
+end
+
+local function setNPCHighlightEnabled(state)
+    NPC_HIGHLIGHT_ENABLED = state
+    if state then
+        scanNPCs()
+    else
+        for model, hl in pairs(npcHighlights) do
+            hl:Destroy()
+        end
+        npcHighlights = {}
+    end
+end
+
+scanNPCs()
+
+workspace.DescendantAdded:Connect(function(obj)
+    if not NPC_HIGHLIGHT_ENABLED then return end
+    if obj:IsA("Model") then
+        task.wait(0.1)
+        addNPCHighlight(obj)
+    elseif obj:IsA("Humanoid") and obj.Parent then
+        task.wait(0.1)
+        addNPCHighlight(obj.Parent)
+    end
+end)
+
+workspace.DescendantRemoving:Connect(function(obj)
+    if obj:IsA("Model") then
+        removeNPCHighlight(obj)
+    end
+end)
+-- ==== КОНЕЦ NPC HIGHLIGHT ====
+
 local function isVisible(fromPos, toPos, charToIgnore)
     rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
     local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
@@ -310,7 +395,7 @@ for _, p in ipairs(Players:GetPlayers()) do
     createESP(p)
 end
 
--- FLY (Entitynt)
+-- FLY
 local flying = false
 local flySpeed = 100
 local maxFlySpeed = 1000
@@ -543,6 +628,7 @@ local function makeToggle(page, label, key)
         if key == "AntiAFK" then toggleAntiAFK() end
         if key == "Fullbright" then toggleFullbright() end
         if key == "AutoReload" then toggleAutoReload() end
+        if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
     end)
 
     toggles[key] = {btn = btn, label = label}
@@ -634,6 +720,7 @@ makeToggle(pages.Visual, "HP Bar", "HP")
 makeToggle(pages.Visual, "Tool", "Tool")
 makeToggle(pages.Visual, "Chams", "Chams")
 makeToggle(pages.Visual, "Tracers", "Tracers")
+makeToggle(pages.Visual, "NPC Highlight", "NPCHighlight")
 
 makeToggle(pages.Aimbot, "Aimbot", "Aimbot")
 makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
