@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS
+-- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -46,7 +46,7 @@ local Config = {
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
     AntiAFK = true, Fullbright = false, AutoReload = false,
-    NPCHighlight = true,
+    NPCHighlight = true, NPCList = true,
 }
 
 local Binds = {
@@ -56,6 +56,7 @@ local Binds = {
     BunnyHop = Enum.KeyCode.B,
     AutoReload = Enum.KeyCode.R,
     NPCHighlight = Enum.KeyCode.H,
+    NPCList = Enum.KeyCode.N,
     ESP = Enum.KeyCode.E,
     Chams = Enum.KeyCode.C,
     Fullbright = Enum.KeyCode.L,
@@ -91,6 +92,46 @@ local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Color = THEME.border
 infoStroke.Thickness = 1
 
+-- ==== NPC LIST (левый верхний угол) ====
+local npcListFrame = Instance.new("Frame")
+npcListFrame.Size = UDim2.fromOffset(220, 300)
+npcListFrame.Position = UDim2.fromOffset(10, 10)
+npcListFrame.BackgroundColor3 = THEME.bg
+npcListFrame.BackgroundTransparency = 0.15
+npcListFrame.BorderSizePixel = 0
+npcListFrame.Parent = gui
+Instance.new("UICorner", npcListFrame).CornerRadius = UDim.new(0, 8)
+local npcListStroke = Instance.new("UIStroke", npcListFrame)
+npcListStroke.Color = THEME.accent
+npcListStroke.Thickness = 1
+npcListStroke.Transparency = 0.4
+
+local npcListTitle = Instance.new("TextLabel")
+npcListTitle.Size = UDim2.new(1, 0, 0, 26)
+npcListTitle.BackgroundTransparency = 1
+npcListTitle.Text = "  NPC LIST"
+npcListTitle.TextColor3 = THEME.accent
+npcListTitle.Font = Enum.Font.GothamBold
+npcListTitle.TextSize = 14
+npcListTitle.TextXAlignment = Enum.TextXAlignment.Left
+npcListTitle.Parent = npcListFrame
+
+local npcListScroll = Instance.new("ScrollingFrame")
+npcListScroll.Size = UDim2.new(1, -12, 1, -34)
+npcListScroll.Position = UDim2.fromOffset(6, 30)
+npcListScroll.BackgroundTransparency = 1
+npcListScroll.BorderSizePixel = 0
+npcListScroll.ScrollBarThickness = 3
+npcListScroll.ScrollBarImageColor3 = THEME.accent
+npcListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+npcListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+npcListScroll.Parent = npcListFrame
+
+local npcListLayout = Instance.new("UIListLayout")
+npcListLayout.Padding = UDim.new(0, 2)
+npcListLayout.Parent = npcListScroll
+-- ==== КОНЕЦ NPC LIST UI ====
+
 local fps, frames, lastTime = 0, 0, tick()
 
 -- ==== ГЛАВНОЕ ОКНО ====
@@ -108,7 +149,6 @@ local mainStroke = Instance.new("UIStroke", main)
 mainStroke.Color = THEME.border
 mainStroke.Thickness = 1
 
--- Заголовок
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 40)
 titleBar.BackgroundColor3 = THEME.bg2
@@ -160,7 +200,6 @@ close.MouseButton1Click:Connect(function()
     main.Visible = false
 end)
 
--- ==== БОКОВАЯ ПАНЕЛЬ ====
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 120, 1, -50)
 sidebar.Position = UDim2.fromOffset(8, 46)
@@ -179,7 +218,6 @@ sidePad.PaddingLeft = UDim.new(0, 6)
 sidePad.PaddingRight = UDim.new(0, 6)
 sidePad.Parent = sidebar
 
--- ==== КОНТЕНТ ====
 local content = Instance.new("Frame")
 content.Size = UDim2.new(1, -144, 1, -58)
 content.Position = UDim2.fromOffset(136, 46)
@@ -376,6 +414,64 @@ workspace.DescendantRemoving:Connect(function(obj)
         removeNPCHighlight(obj)
     end
 end)
+
+-- ==== NPC LIST ОБНОВЛЕНИЕ ====
+task.spawn(function()
+    while task.wait(0.25) do
+        if not Config.NPCList then
+            npcListFrame.Visible = false
+        else
+            npcListFrame.Visible = true
+            local char = LP.Character
+            local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+            local myPos = myRoot and myRoot.Position or Vector3.zero
+
+            local list = {}
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if isNPC(obj) then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    local root = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Torso") or obj.PrimaryPart
+                    if hum and hum.Health > 0 and root then
+                        local dist = math.floor((root.Position - myPos).Magnitude)
+                        table.insert(list, {name = obj.Name, dist = dist})
+                    end
+                end
+            end
+
+            table.sort(list, function(a, b) return a.dist < b.dist end)
+            while #list > 15 do table.remove(list) end
+
+            for _, child in ipairs(npcListScroll:GetChildren()) do
+                if child:IsA("TextLabel") then child:Destroy() end
+            end
+
+            if #list == 0 then
+                local empty = Instance.new("TextLabel")
+                empty.Size = UDim2.new(1, 0, 0, 20)
+                empty.BackgroundTransparency = 1
+                empty.Text = "  нет NPC рядом"
+                empty.TextColor3 = THEME.textDim
+                empty.Font = Enum.Font.Gotham
+                empty.TextSize = 12
+                empty.TextXAlignment = Enum.TextXAlignment.Left
+                empty.Parent = npcListScroll
+            else
+                for _, data in ipairs(list) do
+                    local lbl = Instance.new("TextLabel")
+                    lbl.Size = UDim2.new(1, 0, 0, 20)
+                    lbl.BackgroundTransparency = 1
+                    lbl.Text = string.format("  %s  —  %dm", data.name, data.dist)
+                    lbl.TextColor3 = THEME.text
+                    lbl.Font = Enum.Font.Gotham
+                    lbl.TextSize = 12
+                    lbl.TextXAlignment = Enum.TextXAlignment.Left
+                    lbl.Parent = npcListScroll
+                end
+            end
+        end
+    end
+end)
+-- ==== КОНЕЦ NPC LIST ====
 
 local function isVisible(fromPos, toPos, charToIgnore)
     rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
@@ -687,6 +783,7 @@ local function applyToggle(key, value)
     if key == "Fullbright" then toggleFullbright() end
     if key == "AutoReload" then toggleAutoReload() end
     if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
+    if key == "NPCList" then npcListFrame.Visible = Config.NPCList end
 end
 
 -- ==== КОМПОНЕНТЫ ====
@@ -846,6 +943,7 @@ makeToggle(pages.Visual, "Tool", "Tool")
 makeToggle(pages.Visual, "Chams", "Chams")
 makeToggle(pages.Visual, "Tracers", "Tracers")
 makeToggle(pages.Visual, "NPC Highlight", "NPCHighlight")
+makeToggle(pages.Visual, "NPC List", "NPCList")
 
 makeToggle(pages.Aimbot, "Aimbot", "Aimbot")
 makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
