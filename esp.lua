@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA CHEAT + NPC LIST (FIXED) + TP + BINDS
+-- NINJA CHEAT + DASH-AIMBOT + TEAM/DIST COLORS + NPC LIST
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -23,20 +23,19 @@ local NPC_LIST_MAX_ROWS = 18
 local NPC_ROW_HEIGHT = 20
 
 local THEME = {
-    bg         = Color3.fromRGB(18, 18, 24),
-    bg2        = Color3.fromRGB(22, 22, 30),
-    bg3        = Color3.fromRGB(28, 28, 38),
-    border     = Color3.fromRGB(45, 45, 60),
-    accent     = Color3.fromRGB(168, 85, 247),
-    text       = Color3.fromRGB(220, 220, 230),
-    textDim    = Color3.fromRGB(120, 120, 140),
-    danger     = Color3.fromRGB(239, 68, 68),
-    green      = Color3.fromRGB(0, 255, 140),
-    yellow     = Color3.fromRGB(255, 200, 50),
-    red        = Color3.fromRGB(255, 80, 80),
-    blue       = Color3.fromRGB(100, 200, 255),
+    bg = Color3.fromRGB(18, 18, 24),
+    bg2 = Color3.fromRGB(22, 22, 30),
+    bg3 = Color3.fromRGB(28, 28, 38),
+    border = Color3.fromRGB(45, 45, 60),
+    accent = Color3.fromRGB(168, 85, 247),
+    text = Color3.fromRGB(220, 220, 230),
+    textDim = Color3.fromRGB(120, 120, 140),
+    danger = Color3.fromRGB(239, 68, 68),
+    green = Color3.fromRGB(0, 255, 140),
+    yellow = Color3.fromRGB(255, 200, 50),
+    red = Color3.fromRGB(255, 80, 80),
+    blue = Color3.fromRGB(100, 200, 255),
 }
--- ==================
 
 for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
     if g.Name == "CheatGUI" then g:Destroy() end
@@ -45,9 +44,17 @@ end
 local Config = {
     ESP = true, Box = true, Name = true, HP = true, Tool = true,
     Chams = true, Tracers = false,
+    TeamCheck = true,
+    DistanceColors = true,
+    DistanceThreshold = 20,
     Aimbot = false, ShowFOV = true, FOV = 100,
     VisibleOnly = true,
     FIRE_RATE = 0.1, AimStrength = 0.85,
+    DashAimbot = true,
+    DashThreshold = 40,
+    DashLockTime = 0.8,
+    DashIgnoreFOV = true,
+    DashHighlight = true,
     Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
@@ -57,6 +64,7 @@ local Config = {
 
 local Binds = {
     Aimbot = Enum.KeyCode.Q,
+    DashAimbot = Enum.KeyCode.Z,
     Fly = Enum.KeyCode.F,
     Noclip = Enum.KeyCode.V,
     BunnyHop = Enum.KeyCode.B,
@@ -98,7 +106,7 @@ local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Color = THEME.border
 infoStroke.Thickness = 1
 
--- ==== NPC LIST UI (простой Frame + ручная расстановка) ====
+-- ==== NPC LIST UI ====
 local npcListFrame = Instance.new("Frame")
 npcListFrame.Size = UDim2.fromOffset(280, 420)
 npcListFrame.Position = UDim2.fromOffset(10, 10)
@@ -123,7 +131,6 @@ npcListTitle.TextSize = 14
 npcListTitle.TextXAlignment = Enum.TextXAlignment.Left
 npcListTitle.Parent = npcListFrame
 
--- Контейнер (простой Frame с ClipDescendants)
 local npcListContainer = Instance.new("Frame")
 npcListContainer.Size = UDim2.new(1, -10, 1, -34)
 npcListContainer.Position = UDim2.fromOffset(5, 30)
@@ -131,12 +138,12 @@ npcListContainer.BackgroundTransparency = 1
 npcListContainer.ClipsDescendants = true
 npcListContainer.Parent = npcListFrame
 
--- ==== ГЛАВНОЕ ОКНО ====
 local fps, frames, lastTime = 0, 0, tick()
 
+-- ==== ГЛАВНОЕ ОКНО ====
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(520, 380)
-main.Position = UDim2.new(0.5, -260, 0.5, -190)
+main.Size = UDim2.fromOffset(520, 440)
+main.Position = UDim2.new(0.5, -260, 0.5, -220)
 main.BackgroundColor3 = THEME.bg
 main.BorderSizePixel = 0
 main.Visible = false
@@ -195,9 +202,7 @@ close.Font = Enum.Font.GothamBold
 close.TextSize = 14
 close.Parent = titleBar
 Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
-close.MouseButton1Click:Connect(function()
-    main.Visible = false
-end)
+close.MouseButton1Click:Connect(function() main.Visible = false end)
 
 local sidebar = Instance.new("Frame")
 sidebar.Size = UDim2.new(0, 120, 1, -50)
@@ -229,9 +234,7 @@ local pages = {}
 local tabButtons = {}
 
 local function selectTab(name)
-    for tabName, page in pairs(pages) do
-        page.Visible = (tabName == name)
-    end
+    for tabName, page in pairs(pages) do page.Visible = (tabName == name) end
     for tabName, btn in pairs(tabButtons) do
         if tabName == name then
             btn.BackgroundColor3 = THEME.accent
@@ -274,10 +277,7 @@ local function createTab(name, displayName, emoji)
 
     pages[name] = page
     tabButtons[name] = btn
-
-    btn.MouseButton1Click:Connect(function()
-        selectTab(name)
-    end)
+    btn.MouseButton1Click:Connect(function() selectTab(name) end)
 end
 
 createTab("Visual", "Visual", "👁")
@@ -286,8 +286,8 @@ createTab("Movement", "Move", "🏃")
 createTab("Misc", "Misc", "⚙")
 
 local notify = Instance.new("TextLabel")
-notify.Size = UDim2.fromOffset(260, 40)
-notify.Position = UDim2.new(0.5, -130, 0, 20)
+notify.Size = UDim2.fromOffset(280, 40)
+notify.Position = UDim2.new(0.5, -140, 0, 20)
 notify.BackgroundColor3 = THEME.bg2
 notify.BackgroundTransparency = 0.1
 notify.BorderSizePixel = 0
@@ -331,6 +331,93 @@ Instance.new("UICorner", fovCircle).CornerRadius = UDim.new(1, 0)
 local rayParams = RaycastParams.new()
 rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
+-- ==== ЦВЕТА ESP ====
+local function getESPColor(player, distance)
+    local isSameTeam = false
+    if Config.TeamCheck then
+        local lpTeam = LP.Team
+        if lpTeam and player.Team == lpTeam then
+            isSameTeam = true
+        end
+    end
+
+    if isSameTeam then
+        if Config.DistanceColors and distance > Config.DistanceThreshold then
+            return Color3.fromRGB(0, 255, 255)
+        else
+            return Color3.fromRGB(0, 0, 255)
+        end
+    else
+        if Config.DistanceColors and distance > Config.DistanceThreshold then
+            return Color3.fromRGB(255, 165, 0)
+        else
+            return Color3.fromRGB(255, 0, 0)
+        end
+    end
+end
+
+-- ==== DASH SYSTEM ====
+local playerVelocity = {}
+local DASH_LOCK = {}
+
+local function checkDash(player)
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local vel = hrp.AssemblyLinearVelocity.Magnitude
+    local now = tick()
+    local prev = playerVelocity[player]
+    if not prev then
+        playerVelocity[player] = {vel = vel, time = now}
+        return
+    end
+    local delta = math.abs(vel - prev.vel)
+    if delta >= Config.DashThreshold and vel > 50 then
+        DASH_LOCK[player] = now + Config.DashLockTime
+        if not prev.notified then
+            prev.notified = true
+            showNotify("⚡ DASH: " .. player.Name, THEME.yellow)
+            task.delay(0.3, function() if prev then prev.notified = false end end)
+        end
+    end
+    prev.vel = vel
+    prev.time = now
+end
+
+local dashHighlights = {}
+local function updateDashHighlight(player)
+    local char = player.Character
+    if not char then
+        if dashHighlights[player] then
+            dashHighlights[player]:Destroy()
+            dashHighlights[player] = nil
+        end
+        return
+    end
+    local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+    if isDashing and Config.DashHighlight then
+        if not dashHighlights[player] or dashHighlights[player].Parent ~= char then
+            if dashHighlights[player] then dashHighlights[player]:Destroy() end
+            local hl = Instance.new("Highlight")
+            hl.Name = "DashHighlight"
+            hl.FillColor = Color3.fromRGB(255, 200, 50)
+            hl.FillTransparency = 0.3
+            hl.OutlineColor = Color3.fromRGB(255, 255, 0)
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Adornee = char
+            hl.Parent = char
+            dashHighlights[player] = hl
+        end
+    else
+        if dashHighlights[player] then
+            dashHighlights[player]:Destroy()
+            dashHighlights[player] = nil
+        end
+    end
+end
+
 -- ==== NPC HIGHLIGHT ====
 local npcHighlights = {}
 local NPC_HIGHLIGHT_ENABLED = true
@@ -340,8 +427,7 @@ local function isNPC(model)
     if model == LP.Character then return false end
     local hum = model:FindFirstChildOfClass("Humanoid")
     if not hum then return false end
-    local plr = Players:GetPlayerFromCharacter(model)
-    if plr then return false end
+    if Players:GetPlayerFromCharacter(model) then return false end
     return true
 end
 
@@ -349,7 +435,6 @@ local function addNPCHighlight(model)
     if not NPC_HIGHLIGHT_ENABLED then return end
     if npcHighlights[model] then return end
     if not isNPC(model) then return end
-
     local hl = Instance.new("Highlight")
     hl.Name = "NPCHighlight"
     hl.Adornee = model
@@ -360,7 +445,6 @@ local function addNPCHighlight(model)
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.Enabled = true
     hl.Parent = model
-
     npcHighlights[model] = hl
 end
 
@@ -373,9 +457,7 @@ end
 
 local function scanNPCs()
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Model") and isNPC(obj) then
-            addNPCHighlight(obj)
-        end
+        if obj:IsA("Model") and isNPC(obj) then addNPCHighlight(obj) end
     end
 end
 
@@ -384,9 +466,7 @@ local function setNPCHighlightEnabled(state)
     if state then
         scanNPCs()
     else
-        for model, hl in pairs(npcHighlights) do
-            hl:Destroy()
-        end
+        for m, hl in pairs(npcHighlights) do hl:Destroy() end
         npcHighlights = {}
     end
 end
@@ -395,22 +475,14 @@ scanNPCs()
 
 workspace.DescendantAdded:Connect(function(obj)
     if not NPC_HIGHLIGHT_ENABLED then return end
-    if obj:IsA("Model") then
-        task.wait(0.1)
-        addNPCHighlight(obj)
-    elseif obj:IsA("Humanoid") and obj.Parent then
-        task.wait(0.1)
-        addNPCHighlight(obj.Parent)
-    end
+    if obj:IsA("Model") then task.wait(0.1) addNPCHighlight(obj) end
 end)
 
 workspace.DescendantRemoving:Connect(function(obj)
-    if obj:IsA("Model") then
-        removeNPCHighlight(obj)
-    end
+    if obj:IsA("Model") then removeNPCHighlight(obj) end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ ====
+-- ==== NPC LIST ====
 local npcRows = {}
 
 local STATIC_BLACKLIST = {
@@ -442,8 +514,7 @@ end
 local function teleportTo(pos)
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+    if root then root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end
 end
 
 task.spawn(function()
@@ -465,18 +536,17 @@ task.spawn(function()
 
         local list = {}
 
-        -- Map.StaticNPCs
         local mapFolder = workspace:FindFirstChild("Map")
         if mapFolder then
-            local staticFolder = mapFolder:FindFirstChild("StaticNPCs")
-            if staticFolder then
-                for _, obj in ipairs(staticFolder:GetChildren()) do
+            local sf = mapFolder:FindFirstChild("StaticNPCs")
+            if sf then
+                for _, obj in ipairs(sf:GetChildren()) do
                     if obj:IsA("Model") and not STATIC_BLACKLIST[obj.Name] then
                         local pos = getNPCPosition(obj)
                         if pos then
-                            local dist = (pos - myPos).Magnitude
-                            if dist < NPC_LIST_RADIUS then
-                                table.insert(list, {model = obj, dist = dist, tag = "NPC"})
+                            local d = (pos - myPos).Magnitude
+                            if d < NPC_LIST_RADIUS then
+                                table.insert(list, {model = obj, dist = d, tag = "NPC"})
                             end
                         end
                     end
@@ -484,21 +554,20 @@ task.spawn(function()
             end
         end
 
-        -- Characters.Server
-        local charsFolder = workspace:FindFirstChild("Characters")
-        if charsFolder then
-            local serverFolder = charsFolder:FindFirstChild("Server")
-            if serverFolder then
+        local cf = workspace:FindFirstChild("Characters")
+        if cf then
+            local srv = cf:FindFirstChild("Server")
+            if srv then
                 for _, fname in ipairs({"Players", "NPCs", "Shikigami"}) do
-                    local f = serverFolder:FindFirstChild(fname)
+                    local f = srv:FindFirstChild(fname)
                     if f then
                         for _, obj in ipairs(f:GetChildren()) do
                             if obj:IsA("Model") and obj ~= LP.Character then
                                 local pos = getNPCPosition(obj)
                                 if pos then
-                                    local dist = (pos - myPos).Magnitude
-                                    if dist < NPC_LIST_RADIUS * 10 then
-                                        table.insert(list, {model = obj, dist = dist, tag = fname})
+                                    local d = (pos - myPos).Magnitude
+                                    if d < NPC_LIST_RADIUS * 10 then
+                                        table.insert(list, {model = obj, dist = d, tag = fname})
                                     end
                                 end
                             end
@@ -508,21 +577,12 @@ task.spawn(function()
             end
         end
 
-        -- Сортируем
         table.sort(list, function(a, b) return a.dist < b.dist end)
+        while #list > NPC_LIST_MAX_ROWS do table.remove(list) end
 
-        -- Ограничиваем
-        while #list > NPC_LIST_MAX_ROWS do
-            table.remove(list)
-        end
-
-        -- Удаляем старые
-        for _, row in pairs(npcRows) do
-            row:Destroy()
-        end
+        for _, row in pairs(npcRows) do row:Destroy() end
         npcRows = {}
 
-        -- Создаём новые
         for i, data in ipairs(list) do
             local lbl = Instance.new("TextLabel")
             lbl.Size = UDim2.new(1, 0, 0, NPC_ROW_HEIGHT)
@@ -533,15 +593,10 @@ task.spawn(function()
             lbl.TextXAlignment = Enum.TextXAlignment.Left
             lbl.Text = string.format("  %s  —  %dm", data.model.Name, math.floor(data.dist))
 
-            if data.tag == "NPCs" then
-                lbl.TextColor3 = THEME.red
-            elseif data.tag == "Players" then
-                lbl.TextColor3 = THEME.green
-            elseif data.tag == "Shikigami" then
-                lbl.TextColor3 = THEME.blue
-            else
-                lbl.TextColor3 = THEME.yellow
-            end
+            if data.tag == "NPCs" then lbl.TextColor3 = THEME.red
+            elseif data.tag == "Players" then lbl.TextColor3 = THEME.green
+            elseif data.tag == "Shikigami" then lbl.TextColor3 = THEME.blue
+            else lbl.TextColor3 = THEME.yellow end
 
             lbl.Parent = npcListContainer
             table.insert(npcRows, lbl)
@@ -639,10 +694,7 @@ end
 
 Players.PlayerAdded:Connect(createESP)
 Players.PlayerRemoving:Connect(removeESP)
-
-for _, p in ipairs(Players:GetPlayers()) do
-    createESP(p)
-end
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
 
 -- ==== FLY ====
 local flying = false
@@ -661,17 +713,14 @@ local function flyLoop()
         local char = LP.Character
         local root = char and char:FindFirstChild("HumanoidRootPart")
         if not root then break end
-
         local MoveDirection = Vector3.new()
-        local cameraCFrame = Camera.CFrame
-
-        if UIS:IsKeyDown(Enum.KeyCode.W) then MoveDirection += cameraCFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.S) then MoveDirection -= cameraCFrame.LookVector end
-        if UIS:IsKeyDown(Enum.KeyCode.A) then MoveDirection -= cameraCFrame.RightVector end
-        if UIS:IsKeyDown(Enum.KeyCode.D) then MoveDirection += cameraCFrame.RightVector end
+        local cam = Camera.CFrame
+        if UIS:IsKeyDown(Enum.KeyCode.W) then MoveDirection += cam.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then MoveDirection -= cam.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then MoveDirection -= cam.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then MoveDirection += cam.RightVector end
         if UIS:IsKeyDown(Enum.KeyCode.Space) then MoveDirection += Vector3.new(0, 1, 0) end
         if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then MoveDirection -= Vector3.new(0, 1, 0) end
-
         if MoveDirection.Magnitude > 0 then
             flySpeed = math.min(flySpeed + speedIncrement, maxFlySpeed)
             MoveDirection = MoveDirection.Unit * math.min(randomizeValue(flySpeed, 10), maxFlySpeed)
@@ -679,7 +728,6 @@ local function flyLoop()
         else
             root.AssemblyLinearVelocity = Vector3.zero
         end
-
         RunService.RenderStepped:Wait()
     end
 end
@@ -701,7 +749,6 @@ end
 
 -- ==== NOCLIP ====
 local noclipConn = nil
-
 local function startNoclip()
     if noclipConn then return end
     noclipConn = RunService.Stepped:Connect(function()
@@ -709,39 +756,27 @@ local function startNoclip()
         local char = LP.Character
         if not char then return end
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
-                part.CanCollide = false
-            end
+            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
         end
     end)
 end
 
 local function stopNoclip()
-    if noclipConn then
-        noclipConn:Disconnect()
-        noclipConn = nil
-    end
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
     local char = LP.Character
     if char then
         for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = true
-            end
+            if part:IsA("BasePart") then part.CanCollide = true end
         end
     end
 end
 
 function toggleNoclip()
-    if Config.Noclip then
-        startNoclip()
-    else
-        stopNoclip()
-    end
+    if Config.Noclip then startNoclip() else stopNoclip() end
 end
 
--- ==== SPEED HACK ====
+-- ==== SPEED ====
 local speedConn
-
 function toggleSpeedHack()
     if speedConn then speedConn:Disconnect() speedConn = nil end
     if Config.SpeedHack then
@@ -757,7 +792,6 @@ end
 
 -- ==== INFINITE JUMP ====
 local infJumpConn
-
 function toggleInfiniteJump()
     if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
     if Config.InfiniteJump then
@@ -770,7 +804,6 @@ end
 
 -- ==== BUNNY HOP ====
 local bhopConn
-
 function toggleBunnyHop()
     if bhopConn then bhopConn:Disconnect() bhopConn = nil end
     if Config.BunnyHop then
@@ -785,7 +818,6 @@ end
 
 -- ==== ANTI-AFK ====
 local antiAfkConn
-
 function toggleAntiAFK()
     if antiAfkConn then antiAfkConn:Disconnect() antiAfkConn = nil end
     if Config.AntiAFK then
@@ -798,12 +830,9 @@ end
 
 -- ==== FULLBRIGHT ====
 local origLighting = {
-    Brightness = Lighting.Brightness,
-    ClockTime = Lighting.ClockTime,
-    Ambient = Lighting.Ambient,
-    OutdoorAmbient = Lighting.OutdoorAmbient,
-    FogEnd = Lighting.FogEnd,
-    GlobalShadows = Lighting.GlobalShadows,
+    Brightness = Lighting.Brightness, ClockTime = Lighting.ClockTime,
+    Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
+    FogEnd = Lighting.FogEnd, GlobalShadows = Lighting.GlobalShadows,
 }
 
 function toggleFullbright()
@@ -826,7 +855,6 @@ end
 
 -- ==== AUTO-RELOAD ====
 local autoReloadConn = nil
-
 function toggleAutoReload()
     if autoReloadConn then autoReloadConn:Disconnect() autoReloadConn = nil end
     if Config.AutoReload then
@@ -835,11 +863,8 @@ function toggleAutoReload()
             if not char then return end
             local tool = char:FindFirstChildOfClass("Tool")
             if not tool then return end
-
             local ammo = tool:GetAttribute("Ammo") or tool:GetAttribute("CurrentAmmo")
-            if ammo and ammo <= 0 then
-                pcall(function() tool:Activate() end)
-            end
+            if ammo and ammo <= 0 then pcall(function() tool:Activate() end) end
         end)
     end
 end
@@ -856,6 +881,10 @@ local function applyToggle(key, value)
     if key == "AutoReload" then toggleAutoReload() end
     if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
     if key == "NPCList" then npcListFrame.Visible = Config.NPCList end
+    if key == "DashHighlight" and not value then
+        for p, hl in pairs(dashHighlights) do hl:Destroy() end
+        dashHighlights = {}
+    end
 end
 
 -- ==== КОМПОНЕНТЫ МЕНЮ ====
@@ -921,7 +950,7 @@ local function makeToggle(page, label, key)
         bindBtn.Text = "..."
         bindBtn.BackgroundColor3 = THEME.accent
         bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        showNotify("Нажми клавишу: " .. label .. " (Escape = отмена)", THEME.accent)
+        showNotify("Нажми клавишу: " .. label, THEME.accent)
     end)
 
     toggles[key] = {btn = btn, label = label, bindBtn = bindBtn, indicator = indicator}
@@ -971,7 +1000,6 @@ local function makeSlider(page, label, min, max, default, callback)
     Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
 
     local dragging = false
-
     local function update(value)
         value = math.clamp(value, min, max)
         local p = (value - min) / (max - min)
@@ -980,26 +1008,22 @@ local function makeSlider(page, label, min, max, default, callback)
         titleLbl.Text = label .. ": " .. math.floor(value)
         callback(math.floor(value))
     end
-
     local function getVal(x)
         local absPos = sliderBg.AbsolutePosition.X
         local absSize = sliderBg.AbsoluteSize.X
         return min + (max - min) * math.clamp((x - absPos) / absSize, 0, 1)
     end
-
     sliderBg.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             update(getVal(input.Position.X))
         end
     end)
-
     UIS.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             update(getVal(input.Position.X))
         end
     end)
-
     UIS.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
@@ -1014,14 +1038,24 @@ makeToggle(pages.Visual, "HP Bar", "HP")
 makeToggle(pages.Visual, "Tool", "Tool")
 makeToggle(pages.Visual, "Chams", "Chams")
 makeToggle(pages.Visual, "Tracers", "Tracers")
+makeToggle(pages.Visual, "Team Check", "TeamCheck")
+makeToggle(pages.Visual, "Distance Colors", "DistanceColors")
+makeSlider(pages.Visual, "Dist Threshold", 5, 200, Config.DistanceThreshold, function(v)
+    Config.DistanceThreshold = v
+end)
 makeToggle(pages.Visual, "NPC Highlight", "NPCHighlight")
 makeToggle(pages.Visual, "NPC List", "NPCList")
+makeToggle(pages.Visual, "Dash Highlight", "DashHighlight")
 
 makeToggle(pages.Aimbot, "Aimbot", "Aimbot")
+makeToggle(pages.Aimbot, "Dash Aimbot", "DashAimbot")
+makeToggle(pages.Aimbot, "Dash Ignore FOV", "DashIgnoreFOV")
 makeToggle(pages.Aimbot, "Show FOV", "ShowFOV")
 makeToggle(pages.Aimbot, "Visible Only", "VisibleOnly")
 makeSlider(pages.Aimbot, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
 makeSlider(pages.Aimbot, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
+makeSlider(pages.Aimbot, "Dash Sensitivity", 10, 200, Config.DashThreshold, function(v) Config.DashThreshold = v end)
+makeSlider(pages.Aimbot, "Dash Lock (sec x10)", 1, 30, Config.DashLockTime * 10, function(v) Config.DashLockTime = v / 10 end)
 
 makeToggle(pages.Movement, "Fly", "Fly")
 makeToggle(pages.Movement, "Noclip", "Noclip")
@@ -1090,10 +1124,7 @@ end)
 
 LP.CharacterAdded:Connect(function()
     task.wait(0.5)
-    if Config.Fly then
-        flying = false
-        toggleFly()
-    end
+    if Config.Fly then flying = false toggleFly() end
     if Config.Noclip then toggleNoclip() end
     if Config.SpeedHack then toggleSpeedHack() end
     if Config.InfiniteJump then toggleInfiniteJump() end
@@ -1101,6 +1132,7 @@ LP.CharacterAdded:Connect(function()
     if Config.AutoReload then toggleAutoReload() end
 end)
 
+-- ==== MAIN LOOP ====
 local lastShot = 0
 
 RunService.RenderStepped:Connect(function()
@@ -1116,6 +1148,15 @@ RunService.RenderStepped:Connect(function()
         infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
     end
 
+    if Config.DashAimbot then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
+                checkDash(player)
+                updateDashHighlight(player)
+            end
+        end
+    end
+
     if Config.ShowFOV and Config.Aimbot then
         fovCircle.Size = UDim2.fromOffset(Config.FOV * 2, Config.FOV * 2)
         fovCircle.Visible = true
@@ -1128,6 +1169,7 @@ RunService.RenderStepped:Connect(function()
     local vpSize = Camera.ViewportSize
     local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
     local closestTarget, shortest = nil, Config.FOV
+    local dashTarget = nil
     local camPos = Camera.CFrame.Position
 
     for player, esp in pairs(cache) do
@@ -1142,19 +1184,22 @@ RunService.RenderStepped:Connect(function()
             continue
         end
 
+        local distToPlayer = (camPos - root.Position).Magnitude
+
         if Config.Chams then
             if not esp.highlight or esp.highlight.Parent ~= char then
                 if esp.highlight then esp.highlight:Destroy() end
                 local hl = Instance.new("Highlight")
-                hl.FillColor = THEME.accent
-                hl.FillTransparency = 0.55
-                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-                hl.OutlineTransparency = 0
+                hl.FillTransparency = 0.5
+                hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+                hl.OutlineTransparency = 0.5
                 hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
                 hl.Adornee = char
                 hl.Parent = char
                 esp.highlight = hl
             end
+            -- Обновляем цвет по команде/дистанции
+            esp.highlight.FillColor = getESPColor(player, distToPlayer)
         elseif esp.highlight then
             esp.highlight:Destroy()
             esp.highlight = nil
@@ -1167,21 +1212,22 @@ RunService.RenderStepped:Connect(function()
         if onScreen and Config.ESP then
             local height = math.abs(botPos.Y - topPos.Y)
             local width = height * 0.55
-
             esp.box.Visible = Config.Box
             esp.box.Position = UDim2.fromOffset(topPos.X - width/2, topPos.Y)
             esp.box.Size = UDim2.fromOffset(width, height)
 
             local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-            local boxColor = ratio > 0.6 and THEME.accent
-                or ratio > 0.3 and THEME.yellow
-                or THEME.red
+            local boxColor = getESPColor(player, distToPlayer)
+
+            -- Дэш — золотая рамка
+            if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
+                boxColor = Color3.fromRGB(255, 255, 0)
+            end
             esp.stroke.Color = boxColor
 
             esp.nameLbl.Visible = Config.Name
             if Config.Name then
-                local dist = math.floor((camPos - root.Position).Magnitude)
-                esp.nameLbl.Text = player.Name .. " [" .. dist .. "m]"
+                esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
             end
 
             esp.toolLbl.Visible = Config.Tool
@@ -1193,6 +1239,7 @@ RunService.RenderStepped:Connect(function()
             esp.hpBg.Visible = Config.HP
             if Config.HP then
                 esp.hpFill.Size = UDim2.new(1, 0, ratio, 0)
+                esp.hpFill.BackgroundColor3 = boxColor
             end
 
             if Config.Tracers and esp.tracer then
@@ -1208,32 +1255,47 @@ RunService.RenderStepped:Connect(function()
             if esp.tracer then esp.tracer.Visible = false end
         end
 
+        -- AIMBOT TARGETING
         if Config.Aimbot then
             local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
             if headOn and headScreen.Z > 0 then
-                local canAim = true
-                if Config.VisibleOnly then
+                local dx = headScreen.X - centerX
+                local dy = headScreen.Y - centerY
+                local d = (dx*dx + dy*dy) ^ 0.5
+
+                local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+
+                -- Team Check для аимбота
+                local sameTeam = false
+                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                    sameTeam = true
+                end
+
+                local canAim = not sameTeam
+                if canAim and Config.VisibleOnly then
                     canAim = isVisible(camPos, head.Position, char)
                 end
-                if canAim then
-                    local dx = headScreen.X - centerX
-                    local dy = headScreen.Y - centerY
-                    local d = (dx*dx + dy*dy) ^ 0.5
-                    if d < shortest then
-                        shortest = d
-                        closestTarget = head
-                    end
+
+                if canAim and isDashing and Config.DashAimbot then
+                    dashTarget = head
+                end
+
+                if canAim and d < shortest then
+                    shortest = d
+                    closestTarget = head
                 end
             end
         end
     end
 
+    local finalTarget = dashTarget or closestTarget
+
     if Config.ShowFOV and Config.Aimbot then
-        fovStroke.Color = closestTarget and THEME.danger or THEME.accent
+        fovStroke.Color = finalTarget and THEME.danger or THEME.accent
     end
 
-    if Config.Aimbot and closestTarget then
-        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, closestTarget.Position), Config.AimStrength)
+    if Config.Aimbot and finalTarget then
+        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
         if tick() - lastShot >= Config.FIRE_RATE then
             lastShot = tick()
             local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
