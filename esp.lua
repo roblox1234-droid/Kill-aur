@@ -1,366 +1,1459 @@
 -- ============================================
--- FULL ESP + AIMBOT for CS-like Roblox
+-- NINJA CHEAT + DRAWING ESP + AUTOFIRE + KILL AURA
 -- ============================================
 
 local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
 local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local Stats = game:GetService("Stats")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- ================= НАСТРОЙКИ =================
-local Config = {
-    -- ESP
-    Box = true,
-    Name = true,
-    Health = true,
-    Chams = true,
-    Tracers = false,
-    TeamCheck = true,
-    MaxDistance = 3000,
+if _G.MyCheatLoaded then return end
+_G.MyCheatLoaded = true
 
-    -- Aimbot
-    Aimbot = false,
-    AimKey = Enum.KeyCode.Q,
-    FOV = 150,
-    Smoothness = 0.25,
-    VisibleOnly = true,
+-- ==== НАСТРОЙКА ====
+local SCRIPT_NAME = "NINJA CHEAT"
+local SCRIPT_AUTHOR = "by you"
+local NPC_LIST_RADIUS = 500
+local NPC_LIST_MAX_ROWS = 18
+local NPC_ROW_HEIGHT = 20
 
-    -- Цвета
-    TeamColor = Color3.fromRGB(0, 150, 255),
-    EnemyColor = Color3.fromRGB(255, 50, 50),
-    NeutralColor = Color3.fromRGB(255, 200, 50),
+local THEME = {
+    bg = Color3.fromRGB(18, 18, 24),
+    bg2 = Color3.fromRGB(22, 22, 30),
+    bg3 = Color3.fromRGB(28, 28, 38),
+    border = Color3.fromRGB(45, 45, 60),
+    accent = Color3.fromRGB(168, 85, 247),
+    text = Color3.fromRGB(220, 220, 230),
+    textDim = Color3.fromRGB(120, 120, 140),
+    danger = Color3.fromRGB(239, 68, 68),
+    green = Color3.fromRGB(0, 255, 140),
+    yellow = Color3.fromRGB(255, 200, 50),
+    red = Color3.fromRGB(255, 80, 80),
+    blue = Color3.fromRGB(100, 200, 255),
 }
--- =============================================
 
--- Хранилища
-local esp = {}
-local highlights = {}
-
--- ========== ЦВЕТ ==========
-local function getColor(player)
-    if not Config.TeamCheck then
-        return Config.EnemyColor
-    end
-    if player.Team and LP.Team and player.Team == LP.Team then
-        return Config.TeamColor
-    end
-    return Config.EnemyColor
+for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
+    if g.Name == "CheatGUI" then g:Destroy() end
 end
 
--- ========== ВИДИМОСТЬ ==========
-local function isVisible(fromPos, toPos, ignoreChar)
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    params.FilterDescendantsInstances = {LP.Character, ignoreChar}
-    local result = workspace:Raycast(fromPos, toPos - fromPos, params)
-    return result == nil or result.Instance:IsDescendantOf(ignoreChar)
-end
+local Config = {
+    ESP = true, Box = true, Name = true, HP = true, Tool = true,
+    Chams = true, Tracers = false,
+    TeamCheck = true,
+    DistanceColors = true,
+    DistanceThreshold = 20,
+    Aimbot = false, ShowFOV = true, FOV = 100,
+    VisibleOnly = true,
+    FIRE_RATE = 0.1, AimStrength = 0.85,
+    AutoFire = false,          -- АВТО-СТРЕЛЬБА
+    AutoFireDelay = 0.1,       -- задержка между выстрелами
+    DashAimbot = true,
+    DashThreshold = 40,
+    DashLockTime = 0.8,
+    DashIgnoreFOV = true,
+    DashHighlight = true,
+    -- KILL AURA
+    KillAura = false,
+    KillAuraRange = 15,
+    KillAuraDelay = 0.15,
+    KillAuraRotate = true,
+    -- Движение
+    Fly = false, Noclip = false,
+    SpeedHack = false, WalkSpeed = 16,
+    InfiniteJump = false, BunnyHop = false,
+    AntiAFK = true, Fullbright = false, AutoReload = false,
+    NPCHighlight = true, NPCList = true,
+}
 
--- ========== HIGHLIGHT ==========
-local function createHighlight(model, color)
-    if not model then return nil end
-    local old = model:FindFirstChild("ESP_Highlight")
-    if old then old:Destroy() end
-    local hl = Instance.new("Highlight")
-    hl.Name = "ESP_Highlight"
-    hl.FillColor = color
-    hl.FillTransparency = 0.55
-    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-    hl.OutlineTransparency = 0
-    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-    hl.Adornee = model
-    hl.Parent = model
-    return hl
-end
+local Binds = {
+    Aimbot = Enum.KeyCode.Q,
+    AutoFire = Enum.KeyCode.X,
+    KillAura = Enum.KeyCode.K,
+    DashAimbot = Enum.KeyCode.Z,
+    Fly = Enum.KeyCode.F,
+    Noclip = Enum.KeyCode.V,
+    BunnyHop = Enum.KeyCode.B,
+    AutoReload = Enum.KeyCode.R,
+    NPCHighlight = Enum.KeyCode.H,
+    NPCList = Enum.KeyCode.N,
+    ESP = Enum.KeyCode.E,
+    Chams = Enum.KeyCode.C,
+    Fullbright = Enum.KeyCode.L,
+    SpeedHack = Enum.KeyCode.G,
+    InfiniteJump = Enum.KeyCode.J,
+    AntiAFK = Enum.KeyCode.P,
+    Menu = Enum.KeyCode.Delete,
+}
 
--- ========== СОЗДАНИЕ ESP ==========
-local function createESP(player)
-    if player == LP then return end
-    if esp[player] then return end
+local gui = Instance.new("ScreenGui")
+gui.Name = "CheatGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = LP:WaitForChild("PlayerGui")
 
-    local color = getColor(player)
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Size = UDim2.fromOffset(140, 44)
+infoLabel.Position = UDim2.new(1, -150, 0, 10)
+infoLabel.BackgroundColor3 = THEME.bg2
+infoLabel.BackgroundTransparency = 0.15
+infoLabel.BorderSizePixel = 0
+infoLabel.TextColor3 = THEME.accent
+infoLabel.Font = Enum.Font.Code
+infoLabel.TextSize = 13
+infoLabel.Text = "FPS: --\nPing: --"
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+infoLabel.ZIndex = 500
+infoLabel.Parent = gui
+Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 8)
 
-    esp[player] = {
-        box = Drawing.new("Square"),
-        name = Drawing.new("Text"),
-        healthBg = Drawing.new("Square"),
-        healthFill = Drawing.new("Square"),
-        tracer = Drawing.new("Line"),
-        color = color,
-    }
+-- ==== NPC LIST UI ====
+local npcListFrame = Instance.new("Frame")
+npcListFrame.Size = UDim2.fromOffset(280, 420)
+npcListFrame.Position = UDim2.fromOffset(10, 10)
+npcListFrame.BackgroundColor3 = THEME.bg
+npcListFrame.BackgroundTransparency = 0.15
+npcListFrame.BorderSizePixel = 0
+npcListFrame.Visible = true
+npcListFrame.ZIndex = 500
+npcListFrame.Parent = gui
+Instance.new("UICorner", npcListFrame).CornerRadius = UDim.new(0, 8)
+local npcListStroke = Instance.new("UIStroke", npcListFrame)
+npcListStroke.Color = THEME.accent
+npcListStroke.Thickness = 1
+npcListStroke.Transparency = 0.4
 
-    local d = esp[player]
+local npcListTitle = Instance.new("TextLabel")
+npcListTitle.Size = UDim2.new(1, 0, 0, 26)
+npcListTitle.BackgroundTransparency = 1
+npcListTitle.Text = "  NPC / PLAYER LIST"
+npcListTitle.TextColor3 = THEME.accent
+npcListTitle.Font = Enum.Font.GothamBold
+npcListTitle.TextSize = 14
+npcListTitle.TextXAlignment = Enum.TextXAlignment.Left
+npcListTitle.ZIndex = 501
+npcListTitle.Parent = npcListFrame
 
-    d.box.Thickness = 1
-    d.box.Filled = false
-    d.box.Transparency = 1
-    d.box.Visible = false
+local npcListContainer = Instance.new("Frame")
+npcListContainer.Size = UDim2.new(1, -10, 1, -34)
+npcListContainer.Position = UDim2.fromOffset(5, 30)
+npcListContainer.BackgroundTransparency = 1
+npcListContainer.ClipsDescendants = true
+npcListContainer.ZIndex = 501
+npcListContainer.Parent = npcListFrame
 
-    d.name.Size = 14
-    d.name.Center = true
-    d.name.Outline = true
-    d.name.OutlineColor = Color3.fromRGB(0, 0, 0)
-    d.name.Visible = false
+local fps, frames, lastTime = 0, 0, tick()
 
-    d.healthBg.Size = Vector2.new(3, 20)
-    d.healthBg.Color = Color3.fromRGB(20, 20, 25)
-    d.healthBg.Filled = true
-    d.healthBg.Transparency = 0.4
-    d.healthBg.Visible = false
+-- ==== ГЛАВНОЕ ОКНО ====
+local main = Instance.new("Frame")
+main.Size = UDim2.fromOffset(520, 440)
+main.Position = UDim2.new(0.5, -260, 0.5, -220)
+main.BackgroundColor3 = THEME.bg
+main.BorderSizePixel = 0
+main.Visible = false
+main.Active = true
+main.Draggable = true
+main.ZIndex = 1000
+main.Parent = gui
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+local mainStroke = Instance.new("UIStroke", main)
+mainStroke.Color = THEME.border
+mainStroke.Thickness = 1
 
-    d.healthFill.Size = Vector2.new(3, 20)
-    d.healthFill.Color = Color3.fromRGB(0, 255, 0)
-    d.healthFill.Filled = true
-    d.healthFill.Transparency = 1
-    d.healthFill.Visible = false
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = THEME.bg2
+titleBar.BorderSizePixel = 0
+titleBar.ZIndex = 1001
+titleBar.Parent = main
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+local titleFix = Instance.new("Frame")
+titleFix.Size = UDim2.new(1, 0, 0, 10)
+titleFix.Position = UDim2.new(0, 0, 1, -10)
+titleFix.BackgroundColor3 = THEME.bg2
+titleFix.BorderSizePixel = 0
+titleFix.ZIndex = 1001
+titleFix.Parent = titleBar
 
-    d.tracer.Thickness = 1
-    d.tracer.Transparency = 0.5
-    d.tracer.Visible = false
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -50, 0, 40)
+title.Position = UDim2.fromOffset(16, 0)
+title.BackgroundTransparency = 1
+title.Text = SCRIPT_NAME
+title.TextColor3 = THEME.accent
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.ZIndex = 1002
+title.Parent = titleBar
 
-    if player.Character and Config.Chams then
-        highlights[player] = createHighlight(player.Character, color)
-    end
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, -50, 0, 40)
+subtitle.Position = UDim2.fromOffset(16, 0)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = SCRIPT_AUTHOR
+subtitle.TextColor3 = THEME.textDim
+subtitle.Font = Enum.Font.Code
+subtitle.TextSize = 10
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextYAlignment = Enum.TextYAlignment.Bottom
+subtitle.ZIndex = 1002
+subtitle.Parent = titleBar
 
-    player.CharacterAdded:Connect(function(char)
-        task.wait(0.5)
-        if highlights[player] then
-            highlights[player]:Destroy()
-            highlights[player] = nil
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(28, 28)
+close.Position = UDim2.new(1, -36, 0, 6)
+close.BackgroundColor3 = THEME.danger
+close.BorderSizePixel = 0
+close.Text = "X"
+close.TextColor3 = Color3.fromRGB(255, 255, 255)
+close.Font = Enum.Font.GothamBold
+close.TextSize = 14
+close.ZIndex = 1002
+close.Parent = titleBar
+Instance.new("UICorner", close).CornerRadius = UDim.new(0, 6)
+close.MouseButton1Click:Connect(function() main.Visible = false end)
+
+local sidebar = Instance.new("Frame")
+sidebar.Size = UDim2.new(0, 120, 1, -50)
+sidebar.Position = UDim2.fromOffset(8, 46)
+sidebar.BackgroundColor3 = THEME.bg2
+sidebar.BorderSizePixel = 0
+sidebar.ZIndex = 1001
+sidebar.Parent = main
+Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 8)
+
+local sideLayout = Instance.new("UIListLayout")
+sideLayout.Padding = UDim.new(0, 4)
+sideLayout.Parent = sidebar
+
+local sidePad = Instance.new("UIPadding")
+sidePad.PaddingTop = UDim.new(0, 8)
+sidePad.PaddingLeft = UDim.new(0, 6)
+sidePad.PaddingRight = UDim.new(0, 6)
+sidePad.Parent = sidebar
+
+local content = Instance.new("Frame")
+content.Size = UDim2.new(1, -144, 1, -58)
+content.Position = UDim2.fromOffset(136, 46)
+content.BackgroundColor3 = THEME.bg2
+content.BorderSizePixel = 0
+content.ZIndex = 1001
+content.Parent = main
+Instance.new("UICorner", content).CornerRadius = UDim.new(0, 8)
+
+local pages = {}
+local tabButtons = {}
+
+local function selectTab(name)
+    for tabName, page in pairs(pages) do page.Visible = (tabName == name) end
+    for tabName, btn in pairs(tabButtons) do
+        if tabName == name then
+            btn.BackgroundColor3 = THEME.accent
+            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            btn.BackgroundColor3 = THEME.bg3
+            btn.TextColor3 = THEME.textDim
         end
-        if Config.Chams then
-            highlights[player] = createHighlight(char, color)
-        end
+    end
+end
+
+local function createTab(name, displayName, emoji)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, 0, 0, 32)
+    btn.BackgroundColor3 = THEME.bg3
+    btn.BorderSizePixel = 0
+    btn.Text = "  " .. emoji .. "  " .. displayName
+    btn.TextColor3 = THEME.textDim
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.ZIndex = 1002
+    btn.Parent = sidebar
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+    local page = Instance.new("ScrollingFrame")
+    page.Size = UDim2.new(1, -16, 1, -16)
+    page.Position = UDim2.fromOffset(8, 8)
+    page.BackgroundTransparency = 1
+    page.BorderSizePixel = 0
+    page.ScrollBarThickness = 3
+    page.ScrollBarImageColor3 = THEME.accent
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    page.Visible = false
+    page.ZIndex = 1002
+    page.Parent = content
+
+    local layout = Instance.new("UIListLayout")
+    layout.Padding = UDim.new(0, 5)
+    layout.Parent = page
+
+    pages[name] = page
+    tabButtons[name] = btn
+    btn.MouseButton1Click:Connect(function() selectTab(name) end)
+end
+
+createTab("Visual", "Visual", "👁")
+createTab("Combat", "Combat", "⚔")
+createTab("Movement", "Move", "🏃")
+createTab("Misc", "Misc", "⚙")
+
+local notify = Instance.new("TextLabel")
+notify.Size = UDim2.fromOffset(280, 40)
+notify.Position = UDim2.new(0.5, -140, 0, 20)
+notify.BackgroundColor3 = THEME.bg2
+notify.BackgroundTransparency = 0.1
+notify.BorderSizePixel = 0
+notify.Text = ""
+notify.TextColor3 = THEME.accent
+notify.Font = Enum.Font.Gotham
+notify.TextSize = 14
+notify.Visible = false
+notify.ZIndex = 2000
+notify.Parent = gui
+Instance.new("UICorner", notify).CornerRadius = UDim.new(0, 8)
+local notifyStroke = Instance.new("UIStroke", notify)
+notifyStroke.Color = THEME.accent
+notifyStroke.Thickness = 1
+
+function showNotify(text, color)
+    notify.Text = text
+    notify.TextColor3 = color or THEME.accent
+    notifyStroke.Color = color or THEME.accent
+    notify.Visible = true
+    task.spawn(function()
+        task.wait(1.5)
+        notify.Visible = false
     end)
 end
 
-local function removeESP(player)
-    local d = esp[player]
-    if d then
-        for _, obj in pairs(d) do
-            if typeof(obj) == "Drawing" then
-                pcall(function() obj:Remove() end)
-            end
-        end
-        esp[player] = nil
-    end
-    if highlights[player] then
-        highlights[player]:Destroy()
-        highlights[player] = nil
-    end
-end
-
-for _, p in ipairs(Players:GetPlayers()) do
-    createESP(p)
-end
-
-Players.PlayerAdded:Connect(createESP)
-Players.PlayerRemoving:Connect(removeESP)
-
--- ========== AIMBOT ==========
-local aiming = false
-
+-- FOV Circle через Drawing
 local fovCircle = Drawing.new("Circle")
 fovCircle.Thickness = 1
-fovCircle.Color = Color3.fromRGB(255, 255, 255)
-fovCircle.Transparency = 0.3
+fovCircle.Color = Color3.fromRGB(168, 85, 247)
+fovCircle.Transparency = 0.4
 fovCircle.Visible = false
 
-local function getClosestTarget()
-    local closest = nil
-    local shortest = Config.FOV
-    local camPos = Camera.CFrame.Position
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            local char = player.Character
-            local head = char:FindFirstChild("Head")
-            local hum = char:FindFirstChildOfClass("Humanoid")
+-- ==== ЦВЕТА ESP ====
+local function getESPColor(player, distance)
+    local isSameTeam = false
+    if Config.TeamCheck then
+        local lpTeam = LP.Team
+        if lpTeam and player.Team == lpTeam then
+            isSameTeam = true
+        end
+    end
 
-            if head and hum and hum.Health > 0 then
-                local isEnemy = true
-                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
-                    isEnemy = false
-                end
+    if isSameTeam then
+        if Config.DistanceColors and distance > Config.DistanceThreshold then
+            return Color3.fromRGB(0, 255, 255)
+        else
+            return Color3.fromRGB(0, 0, 255)
+        end
+    else
+        if Config.DistanceColors and distance > Config.DistanceThreshold then
+            return Color3.fromRGB(255, 165, 0)
+        else
+            return Color3.fromRGB(255, 0, 0)
+        end
+    end
+end
 
-                if isEnemy then
-                    local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                    if onScreen and screenPos.Z > 0 then
-                        local dx = screenPos.X - Camera.ViewportSize.X / 2
-                        local dy = screenPos.Y - Camera.ViewportSize.Y / 2
-                        local dist = math.sqrt(dx * dx + dy * dy)
+-- ==== DASH SYSTEM ====
+local playerVelocity = {}
+local DASH_LOCK = {}
 
-                        if dist < shortest then
-                            if not Config.VisibleOnly or isVisible(camPos, head.Position, char) then
-                                shortest = dist
-                                closest = head
+local function checkDash(player)
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local vel = hrp.AssemblyLinearVelocity.Magnitude
+    local now = tick()
+    local prev = playerVelocity[player]
+    if not prev then
+        playerVelocity[player] = {vel = vel, time = now}
+        return
+    end
+    local delta = math.abs(vel - prev.vel)
+    if delta >= Config.DashThreshold and vel > 50 then
+        DASH_LOCK[player] = now + Config.DashLockTime
+        if not prev.notified then
+            prev.notified = true
+            showNotify("⚡ DASH: " .. player.Name, THEME.yellow)
+            task.delay(0.3, function() if prev then prev.notified = false end end)
+        end
+    end
+    prev.vel = vel
+    prev.time = now
+end
+
+local dashHighlights = {}
+local function updateDashHighlight(player)
+    local char = player.Character
+    if not char then
+        if dashHighlights[player] then
+            dashHighlights[player]:Destroy()
+            dashHighlights[player] = nil
+        end
+        return
+    end
+    local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+    if isDashing and Config.DashHighlight then
+        if not dashHighlights[player] or dashHighlights[player].Parent ~= char then
+            if dashHighlights[player] then dashHighlights[player]:Destroy() end
+            local hl = Instance.new("Highlight")
+            hl.Name = "DashHighlight"
+            hl.FillColor = Color3.fromRGB(255, 200, 50)
+            hl.FillTransparency = 0.3
+            hl.OutlineColor = Color3.fromRGB(255, 255, 0)
+            hl.OutlineTransparency = 0
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Adornee = char
+            hl.Parent = char
+            dashHighlights[player] = hl
+        end
+    else
+        if dashHighlights[player] then
+            dashHighlights[player]:Destroy()
+            dashHighlights[player] = nil
+        end
+    end
+end
+
+-- ==== NPC HIGHLIGHT ====
+local npcHighlights = {}
+local NPC_HIGHLIGHT_ENABLED = true
+
+local function isNPC(model)
+    if not model:IsA("Model") then return false end
+    if model == LP.Character then return false end
+    local hum = model:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    if Players:GetPlayerFromCharacter(model) then return false end
+    return true
+end
+
+local function addNPCHighlight(model)
+    if not NPC_HIGHLIGHT_ENABLED then return end
+    if npcHighlights[model] then return end
+    if not isNPC(model) then return end
+    local hl = Instance.new("Highlight")
+    hl.Name = "NPCHighlight"
+    hl.Adornee = model
+    hl.FillColor = THEME.accent
+    hl.FillTransparency = 0.5
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Enabled = true
+    hl.Parent = model
+    npcHighlights[model] = hl
+end
+
+local function removeNPCHighlight(model)
+    if npcHighlights[model] then
+        npcHighlights[model]:Destroy()
+        npcHighlights[model] = nil
+    end
+end
+
+local function scanNPCs()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and isNPC(obj) then addNPCHighlight(obj) end
+    end
+end
+
+local function setNPCHighlightEnabled(state)
+    NPC_HIGHLIGHT_ENABLED = state
+    if state then
+        scanNPCs()
+    else
+        for m, hl in pairs(npcHighlights) do hl:Destroy() end
+        npcHighlights = {}
+    end
+end
+
+scanNPCs()
+
+workspace.DescendantAdded:Connect(function(obj)
+    if not NPC_HIGHLIGHT_ENABLED then return end
+    if obj:IsA("Model") then task.wait(0.1) addNPCHighlight(obj) end
+end)
+
+workspace.DescendantRemoving:Connect(function(obj)
+    if obj:IsA("Model") then removeNPCHighlight(obj) end
+end)
+
+-- ==== NPC LIST ====
+local npcRows = {}
+
+local STATIC_BLACKLIST = {
+    Fountain1 = true, Fountain2 = true, Fountain3 = true,
+    Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
+    SealedGate = true, SealedGate2 = true, SealedGate3 = true, SealedGate4 = true,
+    FogSealedGate = true,
+}
+
+local function getNPCPosition(obj)
+    local r = obj:FindFirstChild("HumanoidRootPart")
+        or obj:FindFirstChild("Torso")
+        or obj:FindFirstChild("UpperTorso")
+        or obj:FindFirstChild("LowerTorso")
+        or obj.PrimaryPart
+        or obj:FindFirstChildWhichIsA("BasePart")
+    if r then return r.Position end
+    for _, d in ipairs(obj:GetDescendants()) do
+        if d:IsA("BasePart") then return d.Position end
+    end
+    return nil
+end
+
+local function teleportTo(pos)
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if root then root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0)) end
+end
+
+task.spawn(function()
+    while task.wait(0.3) do
+        if not Config.NPCList then
+            if npcListFrame.Visible then npcListFrame.Visible = false end
+            continue
+        end
+        if not npcListFrame.Visible then npcListFrame.Visible = true end
+
+        local myPos
+        local char = LP.Character
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            myPos = hrp and hrp.Position or Camera.CFrame.Position
+        else
+            myPos = Camera.CFrame.Position
+        end
+
+        local list = {}
+
+        local mapFolder = workspace:FindFirstChild("Map")
+        if mapFolder then
+            local sf = mapFolder:FindFirstChild("StaticNPCs")
+            if sf then
+                for _, obj in ipairs(sf:GetChildren()) do
+                    if obj:IsA("Model") and not STATIC_BLACKLIST[obj.Name] then
+                        local pos = getNPCPosition(obj)
+                        if pos then
+                            local d = (pos - myPos).Magnitude
+                            if d < NPC_LIST_RADIUS then
+                                table.insert(list, {model = obj, dist = d, tag = "NPC"})
                             end
                         end
                     end
                 end
             end
         end
+
+        local cf = workspace:FindFirstChild("Characters")
+        if cf then
+            for _, obj in ipairs(cf:GetChildren()) do
+                if obj:IsA("Model") and obj ~= LP.Character then
+                    local hum = obj:FindFirstChildOfClass("Humanoid")
+                    if hum and hum.Health > 0 then
+                        local pos = getNPCPosition(obj)
+                        if pos then
+                            local d = (pos - myPos).Magnitude
+                            if d < NPC_LIST_RADIUS * 10 then
+                                local tag = Players:FindFirstChild(obj.Name) and "Players" or "NPCs"
+                                table.insert(list, {model = obj, dist = d, tag = tag})
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        table.sort(list, function(a, b) return a.dist < b.dist end)
+        while #list > NPC_LIST_MAX_ROWS do table.remove(list) end
+
+        for _, row in pairs(npcRows) do row:Destroy() end
+        npcRows = {}
+
+        for i, data in ipairs(list) do
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 0, NPC_ROW_HEIGHT)
+            lbl.Position = UDim2.fromOffset(0, (i - 1) * NPC_ROW_HEIGHT)
+            lbl.BackgroundTransparency = 1
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 12
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.ZIndex = 502
+            lbl.Text = string.format("  %s  —  %dm", data.model.Name, math.floor(data.dist))
+
+            if data.tag == "NPCs" then lbl.TextColor3 = THEME.red
+            elseif data.tag == "Players" then lbl.TextColor3 = THEME.green
+            else lbl.TextColor3 = THEME.yellow end
+
+            lbl.Parent = npcListContainer
+            table.insert(npcRows, lbl)
+        end
     end
-    return closest
+end)
+
+-- ==== ESP через DRAWING ====
+local function isVisible(fromPos, toPos, charToIgnore)
+    rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
+    local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
+    return result == nil or result.Instance:IsDescendantOf(charToIgnore)
 end
 
-local function aimAt(target)
-    if not target then return end
-    local camPos = Camera.CFrame.Position
-    local newCFrame = CFrame.new(camPos, target.Position)
-    Camera.CFrame = Camera.CFrame:Lerp(newCFrame, Config.Smoothness)
+local cache = {}
+
+local function createESP(player)
+    if player == LP then return end
+    if cache[player] then return end
+
+    cache[player] = {
+        box = Drawing.new("Square"),
+        nameLbl = Drawing.new("Text"),
+        toolLbl = Drawing.new("Text"),
+        hpBg = Drawing.new("Square"),
+        hpFill = Drawing.new("Square"),
+        tracer = Drawing.new("Line"),
+        highlight = nil,
+    }
+
+    local d = cache[player]
+    d.box.Thickness = 1
+    d.box.Filled = false
+    d.box.Transparency = 1
+    d.box.Visible = false
+
+    d.nameLbl.Size = 14
+    d.nameLbl.Center = true
+    d.nameLbl.Outline = true
+    d.nameLbl.OutlineColor = Color3.fromRGB(0, 0, 0)
+    d.nameLbl.Visible = false
+
+    d.toolLbl.Size = 12
+    d.toolLbl.Center = true
+    d.toolLbl.Outline = true
+    d.toolLbl.OutlineColor = Color3.fromRGB(0, 0, 0)
+    d.toolLbl.Visible = false
+
+    d.hpBg.Filled = true
+    d.hpBg.Color = Color3.fromRGB(20, 20, 25)
+    d.hpBg.Transparency = 0.4
+    d.hpBg.Visible = false
+
+    d.hpFill.Filled = true
+    d.hpFill.Color = Color3.fromRGB(0, 255, 0)
+    d.hpFill.Transparency = 1
+    d.hpFill.Visible = false
+
+    d.tracer.Thickness = 1
+    d.tracer.Transparency = 0.5
+    d.tracer.Visible = false
+
+    if player.Character and Config.Chams then
+        local hl = Instance.new("Highlight")
+        hl.FillTransparency = 0.5
+        hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+        hl.OutlineTransparency = 0.5
+        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        hl.Adornee = player.Character
+        hl.Parent = player.Character
+        d.highlight = hl
+    end
+
+    player.CharacterAdded:Connect(function(char)
+        task.wait(0.5)
+        if d.highlight then d.highlight:Destroy() end
+        if Config.Chams then
+            local hl = Instance.new("Highlight")
+            hl.FillTransparency = 0.5
+            hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+            hl.OutlineTransparency = 0.5
+            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+            hl.Adornee = char
+            hl.Parent = char
+            d.highlight = hl
+        end
+    end)
 end
 
--- ========== ВВОД ==========
+local function removeESP(player)
+    local d = cache[player]
+    if d then
+        for _, obj in pairs(d) do
+            if typeof(obj) == "Drawing" then
+                pcall(function() obj:Remove() end)
+            elseif typeof(obj) == "Instance" then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+        cache[player] = nil
+    end
+end
+
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+
+-- ==== FLY ====
+local flying = false
+local flySpeed = 100
+local maxFlySpeed = 1000
+local speedIncrement = 0.4
+local originalGravity = workspace.Gravity
+local flyThread = nil
+
+local function randomizeValue(value, range)
+    return value + (value * (math.random(-range, range) / 100))
+end
+
+local function flyLoop()
+    while flying do
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if not root then break end
+        local MoveDirection = Vector3.new()
+        local cam = Camera.CFrame
+        if UIS:IsKeyDown(Enum.KeyCode.W) then MoveDirection += cam.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then MoveDirection -= cam.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then MoveDirection -= cam.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then MoveDirection += cam.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then MoveDirection += Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then MoveDirection -= Vector3.new(0, 1, 0) end
+        if MoveDirection.Magnitude > 0 then
+            flySpeed = math.min(flySpeed + speedIncrement, maxFlySpeed)
+            MoveDirection = MoveDirection.Unit * math.min(randomizeValue(flySpeed, 10), maxFlySpeed)
+            root.AssemblyLinearVelocity = MoveDirection * 0.5
+        else
+            root.AssemblyLinearVelocity = Vector3.zero
+        end
+        RunService.RenderStepped:Wait()
+    end
+end
+
+function toggleFly()
+    if Config.Fly then
+        flying = true
+        workspace.Gravity = 0
+        flyThread = task.spawn(flyLoop)
+    else
+        flying = false
+        flySpeed = 100
+        workspace.Gravity = originalGravity
+        local char = LP.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then root.AssemblyLinearVelocity = Vector3.zero end
+    end
+end
+
+-- ==== NOCLIP ====
+local noclipConn = nil
+local function startNoclip()
+    if noclipConn then return end
+    noclipConn = RunService.Stepped:Connect(function()
+        if not Config.Noclip then return end
+        local char = LP.Character
+        if not char then return end
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide then part.CanCollide = false end
+        end
+    end)
+end
+
+local function stopNoclip()
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+    local char = LP.Character
+    if char then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = true end
+        end
+    end
+end
+
+function toggleNoclip()
+    if Config.Noclip then startNoclip() else stopNoclip() end
+end
+
+-- ==== SPEED ====
+local speedConn
+function toggleSpeedHack()
+    if speedConn then speedConn:Disconnect() speedConn = nil end
+    if Config.SpeedHack then
+        speedConn = RunService.Heartbeat:Connect(function()
+            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum.WalkSpeed = Config.WalkSpeed end
+        end)
+    else
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end
+end
+
+-- ==== INFINITE JUMP ====
+local infJumpConn
+function toggleInfiniteJump()
+    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+    if Config.InfiniteJump then
+        infJumpConn = UIS.JumpRequest:Connect(function()
+            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end)
+    end
+end
+
+-- ==== BUNNY HOP ====
+local bhopConn
+function toggleBunnyHop()
+    if bhopConn then bhopConn:Disconnect() bhopConn = nil end
+    if Config.BunnyHop then
+        bhopConn = RunService.Stepped:Connect(function()
+            local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.FloorMaterial ~= Enum.Material.Air then
+                hum:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end)
+    end
+end
+
+-- ==== ANTI-AFK ====
+local antiAfkConn
+function toggleAntiAFK()
+    if antiAfkConn then antiAfkConn:Disconnect() antiAfkConn = nil end
+    if Config.AntiAFK then
+        antiAfkConn = LP.Idled:Connect(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+    end
+end
+
+-- ==== FULLBRIGHT ====
+local origLighting = {
+    Brightness = Lighting.Brightness, ClockTime = Lighting.ClockTime,
+    Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
+    FogEnd = Lighting.FogEnd, GlobalShadows = Lighting.GlobalShadows,
+}
+
+function toggleFullbright()
+    if Config.Fullbright then
+        Lighting.Brightness = 2
+        Lighting.ClockTime = 14
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
+        Lighting.FogEnd = 100000
+        Lighting.GlobalShadows = false
+    else
+        Lighting.Brightness = origLighting.Brightness
+        Lighting.ClockTime = origLighting.ClockTime
+        Lighting.Ambient = origLighting.Ambient
+        Lighting.OutdoorAmbient = origLighting.OutdoorAmbient
+        Lighting.FogEnd = origLighting.FogEnd
+        Lighting.GlobalShadows = origLighting.GlobalShadows
+    end
+end
+
+-- ==== AUTO-RELOAD ====
+local autoReloadConn = nil
+function toggleAutoReload()
+    if autoReloadConn then autoReloadConn:Disconnect() autoReloadConn = nil end
+    if Config.AutoReload then
+        autoReloadConn = RunService.Heartbeat:Connect(function()
+            local char = LP.Character
+            if not char then return end
+            local tool = char:FindFirstChildOfClass("Tool")
+            if not tool then return end
+            local ammo = tool:GetAttribute("Ammo") or tool:GetAttribute("CurrentAmmo")
+            if ammo and ammo <= 0 then pcall(function() tool:Activate() end) end
+        end)
+    end
+end
+
+-- ==== KILL AURA ====
+local killAuraConn = nil
+local lastAuraHit = 0
+
+local function getAuraTargets()
+    local targets = {}
+    local char = LP.Character
+    local myRoot = char and char:FindFirstChild("HumanoidRootPart")
+    if not myRoot then return targets end
+    local myPos = myRoot.Position
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local pchar = player.Character
+            local pRoot = pchar:FindFirstChild("HumanoidRootPart")
+            local pHum = pchar:FindFirstChildOfClass("Humanoid")
+
+            if pRoot and pHum and pHum.Health > 0 then
+                local sameTeam = false
+                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                    sameTeam = true
+                end
+
+                if not sameTeam then
+                    local dist = (pRoot.Position - myPos).Magnitude
+                    if dist <= Config.KillAuraRange then
+                        table.insert(targets, {
+                            char = pchar,
+                            root = pRoot,
+                            dist = dist,
+                            player = player,
+                        })
+                    end
+                end
+            end
+        end
+    end
+    return targets
+end
+
+local function startKillAura()
+    if killAuraConn then return end
+    killAuraConn = RunService.Heartbeat:Connect(function()
+        if not Config.KillAura then return end
+        if tick() - lastAuraHit < Config.KillAuraDelay then return end
+
+        local targets = getAuraTargets()
+        if #targets == 0 then return end
+
+        -- Сортируем по дистанции
+        table.sort(targets, function(a, b) return a.dist < b.dist end)
+        local target = targets[1]
+
+        -- Поворачиваем камеру на цель
+        if Config.KillAuraRotate then
+            local camPos = Camera.CFrame.Position
+            Camera.CFrame = CFrame.new(camPos, target.root.Position)
+        end
+
+        -- Активируем tool
+        local char = LP.Character
+        local tool = char and char:FindFirstChildOfClass("Tool")
+        if tool then
+            pcall(function() tool:Activate() end)
+        end
+
+        lastAuraHit = tick()
+    end)
+end
+
+local function stopKillAura()
+    if killAuraConn then
+        killAuraConn:Disconnect()
+        killAuraConn = nil
+    end
+end
+
+function toggleKillAura()
+    if Config.KillAura then
+        startKillAura()
+        showNotify("⚔ Kill Aura: ON", THEME.red)
+    else
+        stopKillAura()
+        showNotify("⚔ Kill Aura: OFF", THEME.danger)
+    end
+end
+
+local function applyToggle(key, value)
+    Config[key] = value
+    if key == "Fly" then toggleFly() end
+    if key == "Noclip" then toggleNoclip() end
+    if key == "SpeedHack" then toggleSpeedHack() end
+    if key == "InfiniteJump" then toggleInfiniteJump() end
+    if key == "BunnyHop" then toggleBunnyHop() end
+    if key == "AntiAFK" then toggleAntiAFK() end
+    if key == "Fullbright" then toggleFullbright() end
+    if key == "AutoReload" then toggleAutoReload() end
+    if key == "KillAura" then toggleKillAura() end
+    if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
+    if key == "NPCList" then npcListFrame.Visible = Config.NPCList end
+    if key == "DashHighlight" and not value then
+        for p, hl in pairs(dashHighlights) do hl:Destroy() end
+        dashHighlights = {}
+    end
+end
+
+-- ==== МЕНЮ ====
+local toggles = {}
+local bindingMode = nil
+
+local function makeToggle(page, label, key)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 30)
+    row.BackgroundColor3 = THEME.bg3
+    row.BorderSizePixel = 0
+    row.ZIndex = 1002
+    row.Parent = page
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+
+    local indicator = Instance.new("Frame")
+    indicator.Size = UDim2.fromOffset(4, 18)
+    indicator.Position = UDim2.new(0, 6, 0.5, -9)
+    indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
+    indicator.BorderSizePixel = 0
+    indicator.ZIndex = 1003
+    indicator.Parent = row
+    Instance.new("UICorner", indicator).CornerRadius = UDim.new(1, 0)
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -80, 1, 0)
+    btn.Position = UDim2.fromOffset(16, 0)
+    btn.BackgroundTransparency = 1
+    btn.BorderSizePixel = 0
+    btn.Text = "  " .. label
+    btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.ZIndex = 1003
+    btn.Active = true
+    btn.Parent = row
+
+    local bindBtn = Instance.new("TextButton")
+    bindBtn.Size = UDim2.fromOffset(60, 22)
+    bindBtn.Position = UDim2.new(1, -66, 0.5, -11)
+    bindBtn.BackgroundColor3 = THEME.bg2
+    bindBtn.BorderSizePixel = 0
+    bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
+    bindBtn.TextColor3 = THEME.accent
+    bindBtn.Font = Enum.Font.Code
+    bindBtn.TextSize = 11
+    bindBtn.ZIndex = 1004
+    bindBtn.Active = true
+    bindBtn.Parent = row
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
+    local bs = Instance.new("UIStroke", bindBtn)
+    bs.Color = THEME.accent
+    bs.Thickness = 1
+    bs.Transparency = 0.5
+
+    btn.MouseButton1Click:Connect(function()
+        applyToggle(key, not Config[key])
+        btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+        indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
+    end)
+
+    bindBtn.MouseButton1Click:Connect(function()
+        bindingMode = key
+        bindBtn.Text = "..."
+        bindBtn.BackgroundColor3 = THEME.accent
+        bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        showNotify("Нажми клавишу: " .. label, THEME.accent)
+    end)
+
+    toggles[key] = {btn = btn, label = label, bindBtn = bindBtn, indicator = indicator}
+end
+
+local function makeSlider(page, label, min, max, default, callback)
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 0, 46)
+    frame.BackgroundColor3 = THEME.bg3
+    frame.BorderSizePixel = 0
+    frame.ZIndex = 1002
+    frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 6)
+
+    local titleLbl = Instance.new("TextLabel")
+    titleLbl.Size = UDim2.new(1, -20, 0, 18)
+    titleLbl.Position = UDim2.fromOffset(10, 4)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = label .. ": " .. default
+    titleLbl.TextColor3 = THEME.text
+    titleLbl.Font = Enum.Font.Gotham
+    titleLbl.TextSize = 13
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    titleLbl.ZIndex = 1003
+    titleLbl.Parent = frame
+
+    local sliderBg = Instance.new("Frame")
+    sliderBg.Size = UDim2.new(1, -20, 0, 6)
+    sliderBg.Position = UDim2.new(0, 10, 1, -16)
+    sliderBg.BackgroundColor3 = THEME.bg
+    sliderBg.BorderSizePixel = 0
+    sliderBg.ZIndex = 1003
+    sliderBg.Parent = frame
+    Instance.new("UICorner", sliderBg).CornerRadius = UDim.new(1, 0)
+
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((default - min) / (max - min), 0, 1, 0)
+    fill.BackgroundColor3 = THEME.accent
+    fill.BorderSizePixel = 0
+    fill.ZIndex = 1004
+    fill.Parent = sliderBg
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+
+    local thumb = Instance.new("Frame")
+    thumb.Size = UDim2.fromOffset(14, 14)
+    thumb.AnchorPoint = Vector2.new(0.5, 0.5)
+    thumb.Position = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.BorderSizePixel = 0
+    thumb.ZIndex = 1005
+    thumb.Parent = sliderBg
+    Instance.new("UICorner", thumb).CornerRadius = UDim.new(1, 0)
+
+    local dragging = false
+    local function update(value)
+        value = math.clamp(value, min, max)
+        local p = (value - min) / (max - min)
+        fill.Size = UDim2.new(p, 0, 1, 0)
+        thumb.Position = UDim2.new(p, 0, 0.5, 0)
+        titleLbl.Text = label .. ": " .. math.floor(value)
+        callback(math.floor(value))
+    end
+    local function getVal(x)
+        local absPos = sliderBg.AbsolutePosition.X
+        local absSize = sliderBg.AbsoluteSize.X
+        return min + (max - min) * math.clamp((x - absPos) / absSize, 0, 1)
+    end
+    sliderBg.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            update(getVal(input.Position.X))
+        end
+    end)
+    UIS.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            update(getVal(input.Position.X))
+        end
+    end)
+    UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+end
+
+makeToggle(pages.Visual, "ESP Master", "ESP")
+makeToggle(pages.Visual, "Box", "Box")
+makeToggle(pages.Visual, "Name + Dist", "Name")
+makeToggle(pages.Visual, "HP Bar", "HP")
+makeToggle(pages.Visual, "Tool", "Tool")
+makeToggle(pages.Visual, "Chams", "Chams")
+makeToggle(pages.Visual, "Tracers", "Tracers")
+makeToggle(pages.Visual, "Team Check", "TeamCheck")
+makeToggle(pages.Visual, "Distance Colors", "DistanceColors")
+makeSlider(pages.Visual, "Dist Threshold", 5, 200, Config.DistanceThreshold, function(v)
+    Config.DistanceThreshold = v
+end)
+makeToggle(pages.Visual, "NPC Highlight", "NPCHighlight")
+makeToggle(pages.Visual, "NPC List", "NPCList")
+makeToggle(pages.Visual, "Dash Highlight", "DashHighlight")
+
+makeToggle(pages.Combat, "Aimbot", "Aimbot")
+makeToggle(pages.Combat, "Auto Fire", "AutoFire")
+makeToggle(pages.Combat, "Dash Aimbot", "DashAimbot")
+makeToggle(pages.Combat, "Dash Ignore FOV", "DashIgnoreFOV")
+makeToggle(pages.Combat, "Show FOV", "ShowFOV")
+makeToggle(pages.Combat, "Visible Only", "VisibleOnly")
+makeToggle(pages.Combat, "⚔ Kill Aura", "KillAura")
+makeSlider(pages.Combat, "FOV", 20, 500, Config.FOV, function(v) Config.FOV = v end)
+makeSlider(pages.Combat, "Aim Strength", 0.1, 1.0, Config.AimStrength, function(v) Config.AimStrength = v end)
+makeSlider(pages.Combat, "Dash Sensitivity", 10, 200, Config.DashThreshold, function(v) Config.DashThreshold = v end)
+makeSlider(pages.Combat, "Dash Lock (sec x10)", 1, 30, Config.DashLockTime * 10, function(v) Config.DashLockTime = v / 10 end)
+makeSlider(pages.Combat, "Kill Aura Range", 5, 50, Config.KillAuraRange, function(v) Config.KillAuraRange = v end)
+makeSlider(pages.Combat, "Auto Fire Delay x100", 1, 100, Config.AutoFireDelay * 100, function(v) Config.AutoFireDelay = v / 100 end)
+
+makeToggle(pages.Movement, "Fly", "Fly")
+makeToggle(pages.Movement, "Noclip", "Noclip")
+makeToggle(pages.Movement, "Speed Hack", "SpeedHack")
+makeToggle(pages.Movement, "Infinite Jump", "InfiniteJump")
+makeToggle(pages.Movement, "Bunny Hop", "BunnyHop")
+makeSlider(pages.Movement, "Walk Speed", 16, 200, Config.WalkSpeed, function(v)
+    Config.WalkSpeed = v
+    if Config.SpeedHack then
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = v end
+    end
+end)
+
+makeToggle(pages.Misc, "Anti-AFK", "AntiAFK")
+makeToggle(pages.Misc, "Fullbright", "Fullbright")
+makeToggle(pages.Misc, "Auto Reload", "AutoReload")
+
+selectTab("Visual")
+
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        if input.KeyCode == Config.AimKey then
-            aiming = true
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+
+    if bindingMode then
+        local key = bindingMode
+        bindingMode = nil
+        if input.KeyCode == Enum.KeyCode.Escape then
+            if toggles[key] then
+                toggles[key].bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
+                toggles[key].bindBtn.BackgroundColor3 = THEME.bg2
+                toggles[key].bindBtn.TextColor3 = THEME.accent
+            end
+            showNotify("Бинд отменён", THEME.danger)
+            return
+        end
+        Binds[key] = input.KeyCode
+        if toggles[key] then
+            toggles[key].bindBtn.Text = input.KeyCode.Name
+            toggles[key].bindBtn.BackgroundColor3 = THEME.bg2
+            toggles[key].bindBtn.TextColor3 = THEME.accent
+        end
+        showNotify("Бинд: " .. key .. " -> " .. input.KeyCode.Name, THEME.accent)
+        return
+    end
+
+    if input.KeyCode == Binds.Menu then
+        main.Visible = not main.Visible
+        return
+    end
+
+    for key, bind in pairs(Binds) do
+        if key ~= "Menu" and input.KeyCode == bind and Config[key] ~= nil then
+            applyToggle(key, not Config[key])
+            if toggles[key] then
+                local t = toggles[key]
+                t.btn.TextColor3 = Config[key] and THEME.text or THEME.textDim
+                t.indicator.BackgroundColor3 = Config[key] and THEME.accent or THEME.textDim
+            end
+            showNotify(key .. ": " .. (Config[key] and "ON" or "OFF"),
+                Config[key] and THEME.accent or THEME.danger)
+            return
         end
     end
 end)
 
-UIS.InputEnded:Connect(function(input, gp)
-    if gp then return end
-    if input.UserInputType == Enum.UserInputType.Keyboard then
-        if input.KeyCode == Config.AimKey then
-            aiming = false
-        end
-    end
+LP.CharacterAdded:Connect(function()
+    task.wait(0.5)
+    if Config.Fly then flying = false toggleFly() end
+    if Config.Noclip then toggleNoclip() end
+    if Config.SpeedHack then toggleSpeedHack() end
+    if Config.InfiniteJump then toggleInfiniteJump() end
+    if Config.BunnyHop then toggleBunnyHop() end
+    if Config.AutoReload then toggleAutoReload() end
+    if Config.KillAura then stopKillAura() startKillAura() end
 end)
 
--- ========== ГЛАВНЫЙ ЦИКЛ ==========
+-- ==== MAIN LOOP ====
+local lastShot = 0
+
 RunService.RenderStepped:Connect(function()
-    local camPos = Camera.CFrame.Position
-    local vpSize = Camera.ViewportSize
+    frames += 1
+    if tick() - lastTime >= 1 then
+        fps = frames
+        frames = 0
+        lastTime = tick()
+        local ping = 0
+        pcall(function()
+            ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+        end)
+        infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
+    end
 
-    -- FOV Circle
-    if Config.Aimbot then
-        fovCircle.Position = Vector2.new(vpSize.X / 2, vpSize.Y / 2)
+    if Config.DashAimbot then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
+                checkDash(player)
+                updateDashHighlight(player)
+            end
+        end
+    end
+
+    if Config.ShowFOV and Config.Aimbot then
+        fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         fovCircle.Radius = Config.FOV
         fovCircle.Visible = true
     else
         fovCircle.Visible = false
     end
 
-    -- Aimbot
-    if aiming and Config.Aimbot then
-        local target = getClosestTarget()
-        if target then
-            aimAt(target)
+    if not Config.ESP and not Config.Aimbot then return end
+
+    local vpSize = Camera.ViewportSize
+    local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
+    local closestTarget, shortest = nil, Config.FOV
+    local dashTarget = nil
+    local camPos = Camera.CFrame.Position
+
+    for player, esp in pairs(cache) do
+        local char = player.Character
+        local head = char and char:FindFirstChild("Head")
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+        if not (head and root and hum and hum.Health > 0) then
+            esp.box.Visible = false
+            esp.nameLbl.Visible = false
+            esp.toolLbl.Visible = false
+            esp.hpBg.Visible = false
+            esp.hpFill.Visible = false
+            esp.tracer.Visible = false
+            continue
+        end
+
+        local distToPlayer = (camPos - root.Position).Magnitude
+
+        -- CHAMS
+        if Config.Chams then
+            if not esp.highlight or esp.highlight.Parent ~= char then
+                if esp.highlight then esp.highlight:Destroy() end
+                local hl = Instance.new("Highlight")
+                hl.FillTransparency = 0.5
+                hl.OutlineColor = Color3.fromRGB(0, 0, 0)
+                hl.OutlineTransparency = 0.5
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                hl.Adornee = char
+                hl.Parent = char
+                esp.highlight = hl
+            end
+            esp.highlight.FillColor = getESPColor(player, distToPlayer)
+        elseif esp.highlight then
+            esp.highlight:Destroy()
+            esp.highlight = nil
+        end
+
+        local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
+        local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+        local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
+
+        if onScreen and Config.ESP then
+            local height = math.abs(botPos.Y - topPos.Y)
+            local width = math.max(height * 0.55, 15)
+            local x = topPos.X - width / 2
+            local y = topPos.Y
+
+            local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+            local boxColor = getESPColor(player, distToPlayer)
+
+            if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
+                boxColor = Color3.fromRGB(255, 255, 0)
+            end
+
+            -- BOX
+            esp.box.Visible = Config.Box
+            esp.box.Color = boxColor
+            esp.box.Position = Vector2.new(x, y)
+            esp.box.Size = Vector2.new(width, height)
+
+            -- NAME
+            esp.nameLbl.Visible = Config.Name
+            if Config.Name then
+                esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
+                esp.nameLbl.Position = Vector2.new(topPos.X, y - 18)
+                esp.nameLbl.Color = boxColor
+            end
+
+            -- TOOL
+            esp.toolLbl.Visible = Config.Tool
+            if Config.Tool then
+                local held = char:FindFirstChildOfClass("Tool")
+                esp.toolLbl.Text = held and held.Name or ""
+                esp.toolLbl.Position = Vector2.new(topPos.X, y + height + 2)
+                esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
+            end
+
+            -- HP BAR
+            esp.hpBg.Visible = Config.HP
+            esp.hpFill.Visible = Config.HP
+            if Config.HP then
+                esp.hpBg.Position = Vector2.new(x - 6, y)
+                esp.hpBg.Size = Vector2.new(3, height)
+                esp.hpFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
+                esp.hpFill.Size = Vector2.new(3, height * ratio)
+                esp.hpFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
+                    or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
+                    or Color3.fromRGB(255, 50, 50)
+            end
+
+            -- TRACERS
+            esp.tracer.Visible = Config.Tracers
+            if Config.Tracers then
+                esp.tracer.Color = boxColor
+                esp.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
+                esp.tracer.To = Vector2.new(topPos.X, botPos.Y)
+            end
+        else
+            esp.box.Visible = false
+            esp.nameLbl.Visible = false
+            esp.toolLbl.Visible = false
+            esp.hpBg.Visible = false
+            esp.hpFill.Visible = false
+            esp.tracer.Visible = false
+        end
+
+        -- AIMBOT TARGETING
+        if Config.Aimbot then
+            local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
+            if headOn and headScreen.Z > 0 then
+                local dx = headScreen.X - centerX
+                local dy = headScreen.Y - centerY
+                local d = (dx*dx + dy*dy) ^ 0.5
+
+                local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+
+                local sameTeam = false
+                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                    sameTeam = true
+                end
+
+                local canAim = not sameTeam
+                if canAim and Config.VisibleOnly then
+                    canAim = isVisible(camPos, head.Position, char)
+                end
+
+                if canAim and isDashing and Config.DashAimbot then
+                    dashTarget = head
+                end
+
+                if canAim and d < shortest then
+                    shortest = d
+                    closestTarget = head
+                end
+            end
         end
     end
 
-    -- ESP
-    for player, d in pairs(esp) do
-        local char = player.Character
-        local head = char and char:FindFirstChild("Head")
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
+    local finalTarget = dashTarget or closestTarget
 
-        if head and hrp and hum and hum.Health > 0 then
-            local dist = (camPos - hrp.Position).Magnitude
+    if Config.ShowFOV and Config.Aimbot then
+        if finalTarget then
+            fovCircle.Color = THEME.danger
+        else
+            fovCircle.Color = THEME.accent
+        end
+    end
 
-            if dist > Config.MaxDistance then
-                d.box.Visible = false
-                d.name.Visible = false
-                d.healthBg.Visible = false
-                d.healthFill.Visible = false
-                d.tracer.Visible = false
-            else
-                local color = getColor(player)
-                if color ~= d.color then
-                    d.color = color
-                    if highlights[player] then
-                        highlights[player].FillColor = color
-                    end
-                end
+    -- AIMBOT
+    if Config.Aimbot and finalTarget then
+        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
 
-                local topPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-                local botPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-
-                if topPos.Z > 0 and botPos.Z > 0 then
-                    local height = math.abs(botPos.Y - topPos.Y)
-                    if height < 5 then height = 40 end
-                    local width = math.max(height * 0.55, 15)
-                    local x = topPos.X - width / 2
-                    local y = topPos.Y
-
-                    -- Box
-                    if Config.Box then
-                        d.box.Visible = true
-                        d.box.Color = color
-                        d.box.Size = Vector2.new(width, height)
-                        d.box.Position = Vector2.new(x, y)
-                    else
-                        d.box.Visible = false
-                    end
-
-                    -- Name
-                    if Config.Name then
-                        d.name.Visible = true
-                        d.name.Text = string.format("%s [%dm]", player.Name, math.floor(dist))
-                        d.name.Position = Vector2.new(topPos.X, y - 18)
-                        d.name.Color = color
-                    else
-                        d.name.Visible = false
-                    end
-
-                    -- Health
-                    if Config.Health then
-                        local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        d.healthBg.Visible = true
-                        d.healthBg.Size = Vector2.new(3, height)
-                        d.healthBg.Position = Vector2.new(x - 6, y)
-
-                        d.healthFill.Visible = true
-                        d.healthFill.Size = Vector2.new(3, height * ratio)
-                        d.healthFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
-
-                        if ratio > 0.6 then
-                            d.healthFill.Color = Color3.fromRGB(0, 255, 0)
-                        elseif ratio > 0.3 then
-                            d.healthFill.Color = Color3.fromRGB(255, 200, 0)
-                        else
-                            d.healthFill.Color = Color3.fromRGB(255, 50, 50)
-                        end
-                    else
-                        d.healthBg.Visible = false
-                        d.healthFill.Visible = false
-                    end
-
-                    -- Tracers
-                    if Config.Tracers then
-                        d.tracer.Visible = true
-                        d.tracer.Color = color
-                        d.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
-                        d.tracer.To = Vector2.new(topPos.X, botPos.Y)
-                    else
-                        d.tracer.Visible = false
-                    end
-                else
-                    d.box.Visible = false
-                    d.name.Visible = false
-                    d.healthBg.Visible = false
-                    d.healthFill.Visible = false
-                    d.tracer.Visible = false
+        -- AUTO FIRE
+        if Config.AutoFire then
+            if tick() - lastShot >= Config.AutoFireDelay then
+                lastShot = tick()
+                local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+                if tool then
+                    pcall(function() tool:Activate() end)
                 end
             end
-        else
-            d.box.Visible = false
-            d.name.Visible = false
-            d.healthBg.Visible = false
-            d.healthFill.Visible = false
-            d.tracer.Visible = false
         end
     end
 end)
 
--- ========== ЗАПУСК ==========
-print("[ESP] Loaded")
-print("[ESP] Box:", Config.Box)
-print("[ESP] Chams:", Config.Chams)
-print("[ESP] Health:", Config.Health)
-print("[Aimbot] Key: Q, FOV:", Config.FOV)
+if Config.AntiAFK then toggleAntiAFK() end
+
+showNotify(SCRIPT_NAME .. " загружен! Delete = меню", THEME.accent)
+print("[NINJA] Загружено. Delete = меню")
+print("[NINJA] ESP на Drawing API")
+print("[NINJA] Auto Fire: X | Kill Aura: K")
