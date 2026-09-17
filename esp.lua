@@ -340,10 +340,6 @@ rayParams.FilterType = Enum.RaycastFilterType.Exclude
 -- ==== NPC HIGHLIGHT ====
 local npcHighlights = {}
 local NPC_HIGHLIGHT_ENABLED = true
-local NPC_FILL_COLOR = Color3.fromRGB(168, 85, 247)
-local NPC_FILL_TRANSPARENCY = 0.5
-local NPC_OUTLINE_COLOR = Color3.fromRGB(255, 255, 255)
-local NPC_OUTLINE_TRANSPARENCY = 0
 
 local function isNPC(model)
     if not model:IsA("Model") then return false end
@@ -363,10 +359,10 @@ local function addNPCHighlight(model)
     local hl = Instance.new("Highlight")
     hl.Name = "NPCHighlight"
     hl.Adornee = model
-    hl.FillColor = NPC_FILL_COLOR
-    hl.FillTransparency = NPC_FILL_TRANSPARENCY
-    hl.OutlineColor = NPC_OUTLINE_COLOR
-    hl.OutlineTransparency = NPC_OUTLINE_TRANSPARENCY
+    hl.FillColor = THEME.accent
+    hl.FillTransparency = 0.5
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.OutlineTransparency = 0
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.Enabled = true
     hl.Parent = model
@@ -420,10 +416,10 @@ workspace.DescendantRemoving:Connect(function(obj)
     end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) ====
+-- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME + DEBUG) ====
 local npcRows = {}
+local lastDebugPrint = 0
 
--- Фильтр декораций
 local STATIC_BLACKLIST = {
     Fountain1 = true, Fountain2 = true, Fountain3 = true,
     Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
@@ -474,52 +470,55 @@ RunService.RenderStepped:Connect(function()
     local myPos = myRoot.Position
 
     local active = {}
+    local countPlayers, countEnemies, countStatic, countShikigami = 0, 0, 0, 0
 
-    -- === 1. Characters.Server (Players, NPCs, Shikigami) ===
+    -- Characters.Server
     local charsFolder = workspace:FindFirstChild("Characters")
     if charsFolder then
         local serverFolder = charsFolder:FindFirstChild("Server")
         if serverFolder then
-            -- Игроки
-            local playersFolder = serverFolder:FindFirstChild("Players")
-            if playersFolder then
-                for _, obj in ipairs(playersFolder:GetChildren()) do
+            local pf = serverFolder:FindFirstChild("Players")
+            if pf then
+                for _, obj in ipairs(pf:GetChildren()) do
                     if obj:IsA("Model") and obj ~= LP.Character then
                         local pos = getNPCPosition(obj)
                         if pos then
                             local dist = (pos - myPos).Magnitude
                             if dist < 5000 then
                                 active[obj] = {dist = dist, category = "PLAYER"}
+                                countPlayers = countPlayers + 1
                             end
                         end
                     end
                 end
             end
-            -- Враги
-            local npcsFolder = serverFolder:FindFirstChild("NPCs")
-            if npcsFolder then
-                for _, obj in ipairs(npcsFolder:GetChildren()) do
+
+            local nf = serverFolder:FindFirstChild("NPCs")
+            if nf then
+                for _, obj in ipairs(nf:GetChildren()) do
                     if obj:IsA("Model") then
                         local pos = getNPCPosition(obj)
                         if pos then
                             local dist = (pos - myPos).Magnitude
                             if dist < 5000 then
                                 active[obj] = {dist = dist, category = "ENEMY"}
+                                countEnemies = countEnemies + 1
                             end
                         end
                     end
                 end
             end
-            -- Шикигами
-            local shikigamiFolder = serverFolder:FindFirstChild("Shikigami")
-            if shikigamiFolder then
-                for _, obj in ipairs(shikigamiFolder:GetChildren()) do
+
+            local sf = serverFolder:FindFirstChild("Shikigami")
+            if sf then
+                for _, obj in ipairs(sf:GetChildren()) do
                     if obj:IsA("Model") then
                         local pos = getNPCPosition(obj)
                         if pos then
                             local dist = (pos - myPos).Magnitude
                             if dist < 5000 then
                                 active[obj] = {dist = dist, category = "PLAYER"}
+                                countShikigami = countShikigami + 1
                             end
                         end
                     end
@@ -528,7 +527,7 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
-    -- === 2. Map.StaticNPCs ===
+    -- Map.StaticNPCs
     local mapFolder = workspace:FindFirstChild("Map")
     if mapFolder then
         local staticFolder = mapFolder:FindFirstChild("StaticNPCs")
@@ -540,11 +539,20 @@ RunService.RenderStepped:Connect(function()
                         local dist = (pos - myPos).Magnitude
                         if dist < 5000 then
                             active[obj] = {dist = dist, category = "STATIC"}
+                            countStatic = countStatic + 1
                         end
                     end
                 end
             end
         end
+    end
+
+    -- Отладка раз в 3 секунды
+    if tick() - lastDebugPrint > 3 then
+        lastDebugPrint = tick()
+        print(string.format("[NPC LIST] Players: %d | Enemies: %d | Shikigami: %d | Static: %d | Всего: %d",
+            countPlayers, countEnemies, countShikigami, countStatic,
+            countPlayers + countEnemies + countShikigami + countStatic))
     end
 
     -- Удаляем исчезнувших
