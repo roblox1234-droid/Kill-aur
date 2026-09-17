@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA STYLE CHEAT GUI + NPC HIGHLIGHT + BINDS + NPC LIST (REAL-TIME)
+-- NINJA STYLE CHEAT GUI + NPC LIST + TP + BINDS + FILTER
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -95,7 +95,7 @@ local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Color = THEME.border
 infoStroke.Thickness = 1
 
--- ==== NPC LIST (левый верхний угол) ====
+-- ==== NPC LIST UI ====
 local npcListFrame = Instance.new("Frame")
 npcListFrame.Size = UDim2.fromOffset(250, 320)
 npcListFrame.Position = UDim2.fromOffset(10, 10)
@@ -420,19 +420,54 @@ workspace.DescendantRemoving:Connect(function(obj)
     end
 end)
 
--- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) ====
+-- ==== NPC LIST ОБНОВЛЕНИЕ (REAL-TIME) + STATIC NPCs + ФИЛЬТР ====
 local npcRows = {}
+
+-- ==== ФИЛЬТР ДЕКОРАЦИЙ В StaticNPCs ====
+local STATIC_BLACKLIST = {
+    -- Фонтаны
+    Fountain1 = true, Fountain2 = true, Fountain3 = true,
+    -- Обелиски
+    Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
+    -- Врата
+    SealedGate = true, SealedGate2 = true, SealedGate3 = true, SealedGate4 = true,
+    FogSealedGate = true,
+    -- Деревья
+    SHRTree = true, PHRTree = true,
+    -- Зоны и спавны
+    OfferingArea = true,
+    AccessoryCrafting = true,
+    AilmentApply = true,
+    StarSetSpawn = true, JJTSetSpawn = true, GojoEstateSetSpawn = true,
+    ShadowIslandSetSpawn = true,
+    GojoEstateTPIn = true, GojoEstateTPOut = true,
+    ShadowIslandTPIn = true, ShadowIslandTPOut = true,
+    StarCult1 = true, StarCult2 = true, StarCult3 = true,
+    StarCult4 = true, StarCult5 = true,
+    StarCultRescue = true, StarCultRecruiter = true,
+    StarRageAwakener = true,
+    BloodMAwakener = true, BloodMAwakening = true,
+    BloodMQuest1 = true, BloodMQuest2 = true, BloodMQuest3 = true,
+    LimitlessAwakener = true, LimitlessAwakener2 = true, LimitlessAwakener3 = true,
+    AwakenedZenin = true, AwakenedXPExchanger = true,
+    -- Рейд-зоны (не NPC)
+    BossIslands_Yuta = true, BossIslands_Choso = true, BossIslands_Sukuna = true,
+    BossIslands_Kashimo = true, BossIslands_AToji = true, BossIslands_CurseCalamity = true,
+    BossIslands_AGojo = true, BossIslands_ZeninSiege = true, BossIslands_SukunaInf = true,
+    BossIslands_StarRage = true, BossIslands_Toji = true, BossIslands_Jogo = true,
+    BossIslands_Judge = true, BossIslands_AKashimo = true, BossIslands_TojiInf = true,
+    BossIslands_Maki = true,
+}
+-- ==== КОНЕЦ ФИЛЬТРА ====
 
 local function getNPCLevel(obj)
     local lvl = obj:GetAttribute("Level") or obj:GetAttribute("Lvl")
     if not lvl then
         local hum = obj:FindFirstChildOfClass("Humanoid")
-        if hum then
-            lvl = hum:GetAttribute("Level") or hum:GetAttribute("Lvl")
-        end
+        if hum then lvl = hum:GetAttribute("Level") or hum:GetAttribute("Lvl") end
     end
     if not lvl then
-        local num = obj.Name:match("Lv%.?%s*(%d+)") or obj.Name:match("%[Lv%.%s*(%d+)%]")
+        local num = obj.Name:match("Lv%.?%s*(%d+)")
         if num then lvl = tonumber(num) end
     end
     return lvl
@@ -456,19 +491,46 @@ local function getNPCPosition(obj)
         or obj:FindFirstChild("LowerTorso")
         or obj.PrimaryPart
         or obj:FindFirstChildWhichIsA("BasePart")
-    return root and root.Position or nil
+    if root then return root.Position end
+    for _, d in ipairs(obj:GetDescendants()) do
+        if d:IsA("BasePart") then return d.Position end
+    end
+    return nil
 end
+
+local function isStaticNPC(obj)
+    if not obj:IsA("Model") then return false end
+    local parent = obj.Parent
+    if not parent or parent.Name ~= "StaticNPCs" then return false end
+    return obj:FindFirstChildWhichIsA("BasePart") ~= nil
+end
+
+local function teleportTo(pos)
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
+end
+
+local hoverTip = Instance.new("TextLabel")
+hoverTip.Size = UDim2.fromOffset(180, 22)
+hoverTip.BackgroundColor3 = THEME.bg2
+hoverTip.BackgroundTransparency = 0.1
+hoverTip.BorderSizePixel = 0
+hoverTip.TextColor3 = THEME.accent
+hoverTip.Font = Enum.Font.Gotham
+hoverTip.TextSize = 11
+hoverTip.Visible = false
+hoverTip.ZIndex = 999
+hoverTip.Parent = gui
+Instance.new("UICorner", hoverTip).CornerRadius = UDim.new(0, 4)
 
 RunService.RenderStepped:Connect(function()
     if not Config.NPCList then
-        if npcListFrame.Visible then
-            npcListFrame.Visible = false
-        end
+        if npcListFrame.Visible then npcListFrame.Visible = false end
         return
     end
-    if not npcListFrame.Visible then
-        npcListFrame.Visible = true
-    end
+    if not npcListFrame.Visible then npcListFrame.Visible = true end
 
     local char = LP.Character
     local myRoot = char and char:FindFirstChild("HumanoidRootPart")
@@ -477,6 +539,7 @@ RunService.RenderStepped:Connect(function()
 
     local active = {}
 
+    -- 1. Humanoid-модели (враги + игроки)
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("Model") then
             local hum = obj:FindFirstChildOfClass("Humanoid")
@@ -487,11 +550,7 @@ RunService.RenderStepped:Connect(function()
                     if pos then
                         local dist = (pos - myPos).Magnitude
                         if dist < 1000 then
-                            active[obj] = {
-                                dist = dist,
-                                level = getNPCLevel(obj),
-                                category = category,
-                            }
+                            active[obj] = {dist = dist, category = category}
                         end
                     end
                 end
@@ -499,43 +558,92 @@ RunService.RenderStepped:Connect(function()
         end
     end
 
+    -- 2. StaticNPCs с фильтром
+    local mapFolder = workspace:FindFirstChild("Map")
+    if mapFolder then
+        local staticFolder = mapFolder:FindFirstChild("StaticNPCs")
+        if staticFolder then
+            for _, obj in ipairs(staticFolder:GetChildren()) do
+                if isStaticNPC(obj) and not STATIC_BLACKLIST[obj.Name] then
+                    local pos = getNPCPosition(obj)
+                    if pos then
+                        local dist = (pos - myPos).Magnitude
+                        if dist < 1000 then
+                            active[obj] = {dist = dist, category = "STATIC"}
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Удаляем исчезнувших
     for model, row in pairs(npcRows) do
         if not active[model] then
-            row.lbl:Destroy()
+            row.btn:Destroy()
             npcRows[model] = nil
         end
     end
 
+    -- Создаём/обновляем
     for model, data in pairs(active) do
         if not npcRows[model] then
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, 0, 0, 20)
-            lbl.BackgroundTransparency = 1
-            lbl.TextColor3 = THEME.text
-            lbl.Font = Enum.Font.Gotham
-            lbl.TextSize = 12
-            lbl.TextXAlignment = Enum.TextXAlignment.Left
-            lbl.Parent = npcListScroll
-            npcRows[model] = {lbl = lbl}
+            local btn = Instance.new("TextButton")
+            btn.Size = UDim2.new(1, 0, 0, 20)
+            btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+            btn.BackgroundTransparency = 0.5
+            btn.BorderSizePixel = 0
+            btn.Text = ""
+            btn.TextXAlignment = Enum.TextXAlignment.Left
+            btn.Font = Enum.Font.Gotham
+            btn.TextSize = 12
+            btn.AutoButtonColor = true
+            btn.Parent = npcListScroll
+            Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+
+            btn.MouseButton1Click:Connect(function()
+                if model and model.Parent then
+                    local pos = getNPCPosition(model)
+                    if pos then
+                        teleportTo(pos)
+                        showNotify("TP → " .. model.Name, THEME.accent)
+                    end
+                end
+            end)
+
+            btn.MouseEnter:Connect(function()
+                btn.BackgroundTransparency = 0.2
+                btn.BackgroundColor3 = THEME.accent
+                local m = UIS:GetMouseLocation()
+                hoverTip.Text = "  TP → " .. model.Name
+                hoverTip.Position = UDim2.fromOffset(m.X + 15, m.Y + 15)
+                hoverTip.Visible = true
+            end)
+            btn.MouseLeave:Connect(function()
+                btn.BackgroundTransparency = 0.5
+                btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
+                hoverTip.Visible = false
+            end)
+
+            npcRows[model] = {btn = btn}
         end
 
-        local lvl = data.level
-        local lvlText = lvl and ("[Lv. " .. lvl .. "] ") or ""
-        local prefix = data.category == "ENEMY" and "👹 " or "👤 "
+        local data2 = active[model]
         local displayName = model.Name:gsub("_Server", ""):gsub("_Client", "")
+        local prefix = "🟡 "
+        local color = THEME.yellow
 
-        npcRows[model].lbl.Text = string.format(
-            "  %s%s%s  —  %dm",
-            prefix, lvlText, displayName, math.floor(data.dist)
-        )
-
-        if data.category == "ENEMY" then
-            npcRows[model].lbl.TextColor3 = THEME.red
-        else
-            npcRows[model].lbl.TextColor3 = THEME.green
+        if data2.category == "ENEMY" then
+            prefix = "👹 "
+            color = THEME.red
+        elseif data2.category == "PLAYER" then
+            prefix = "👤 "
+            color = THEME.green
         end
 
-        npcRows[model].lbl.LayoutOrder = math.floor(data.dist)
+        npcRows[model].btn.Text = string.format("  %s%s  —  %dm", prefix, displayName, math.floor(data2.dist))
+        npcRows[model].btn.TextColor3 = color
+        npcRows[model].btn.LayoutOrder = math.floor(data2.dist)
     end
 end)
 -- ==== КОНЕЦ NPC LIST ====
@@ -698,8 +806,7 @@ local function startNoclip()
         if not Config.Noclip then return end
         local char = LP.Character
         if not char then return end
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") and part.CanCollide then
+        for _, part in ipairs(char:GetDescendants()) do            if part:IsA("BasePart") and part.CanCollide then
                 part.CanCollide = false
             end
         end
@@ -853,7 +960,7 @@ local function applyToggle(key, value)
     if key == "NPCList" then npcListFrame.Visible = Config.NPCList end
 end
 
--- ==== КОМПОНЕНТЫ ====
+-- ==== КОМПОНЕНТЫ МЕНЮ ====
 local toggles = {}
 local bindingMode = nil
 
