@@ -15,6 +15,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 if _G.MyCheatLoaded then return end
 _G.MyCheatLoaded = true
 
+-- ==== НАЗВАНИЕ СКРИПТА ====
+local SCRIPT_NAME = "MY CHEAT v1.0"
+local SCRIPT_AUTHOR = "by you"
+-- ==========================
+
 for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
     if g.Name == "CheatGUI" then g:Destroy() end
 end
@@ -32,14 +37,23 @@ local Config = {
     NPCHighlight = true,
 }
 
-local Keybinds = {
+-- ==== БИНДЫ (клавиша по умолчанию для каждого тоггла) ====
+local Binds = {
     Aimbot = Enum.KeyCode.Q,
     Fly = Enum.KeyCode.F,
     Noclip = Enum.KeyCode.V,
     BunnyHop = Enum.KeyCode.B,
     AutoReload = Enum.KeyCode.R,
+    NPCHighlight = Enum.KeyCode.H,
+    ESP = Enum.KeyCode.E,
+    Chams = Enum.KeyCode.C,
+    Fullbright = Enum.KeyCode.L,
+    SpeedHack = Enum.KeyCode.G,
+    InfiniteJump = Enum.KeyCode.J,
+    AntiAFK = Enum.KeyCode.K,
     Menu = Enum.KeyCode.Delete,
 }
+-- =========================================================
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "CheatGUI"
@@ -81,12 +95,23 @@ local title = Instance.new("TextLabel")
 title.Size = UDim2.new(1, 0, 0, 30)
 title.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
 title.BorderSizePixel = 0
-title.Text = "  CHEAT MENU"
+title.Text = "  " .. SCRIPT_NAME
 title.TextColor3 = Color3.fromRGB(0, 255, 150)
 title.Font = Enum.Font.Code
 title.TextSize = 16
 title.TextXAlignment = Enum.TextXAlignment.Left
 title.Parent = main
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Size = UDim2.new(1, 0, 0, 14)
+subtitle.Position = UDim2.new(0, 0, 0, 30)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "  " .. SCRIPT_AUTHOR
+subtitle.TextColor3 = Color3.fromRGB(120, 120, 140)
+subtitle.Font = Enum.Font.Code
+subtitle.TextSize = 10
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.Parent = main
 
 local close = Instance.new("TextButton")
 close.Size = UDim2.fromOffset(30, 30)
@@ -103,7 +128,7 @@ end)
 
 local tabsBar = Instance.new("Frame")
 tabsBar.Size = UDim2.new(1, 0, 0, 30)
-tabsBar.Position = UDim2.fromOffset(0, 30)
+tabsBar.Position = UDim2.fromOffset(0, 44)
 tabsBar.BackgroundColor3 = Color3.fromRGB(30, 30, 38)
 tabsBar.BorderSizePixel = 0
 tabsBar.Parent = main
@@ -142,8 +167,8 @@ local function createTab(name, displayName)
     btn.Parent = tabsBar
 
     local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -10, 1, -70)
-    page.Position = UDim2.fromOffset(5, 65)
+    page.Size = UDim2.new(1, -10, 1, -85)
+    page.Position = UDim2.fromOffset(5, 80)
     page.BackgroundTransparency = 1
     page.BorderSizePixel = 0
     page.ScrollBarThickness = 4
@@ -600,38 +625,69 @@ function toggleAutoReload()
     end
 end
 
--- MENU
+-- ==== ФУНКЦИЯ ПРИМЕНЕНИЯ ТОГГЛА ====
+local function applyToggle(key, value)
+    Config[key] = value
+    if key == "Fly" then toggleFly() end
+    if key == "Noclip" then toggleNoclip() end
+    if key == "SpeedHack" then toggleSpeedHack() end
+    if key == "InfiniteJump" then toggleInfiniteJump() end
+    if key == "BunnyHop" then toggleBunnyHop() end
+    if key == "AntiAFK" then toggleAntiAFK() end
+    if key == "Fullbright" then toggleFullbright() end
+    if key == "AutoReload" then toggleAutoReload() end
+    if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
+end
+
+-- ==== МЕНЮ ====
 local toggles = {}
+local bindingMode = nil  -- какой ключ сейчас биндится
 
 local function makeToggle(page, label, key)
+    local row = Instance.new("Frame")
+    row.Size = UDim2.new(1, 0, 0, 26)
+    row.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    row.BorderSizePixel = 0
+    row.Parent = page
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
+
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 26)
-    btn.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
+    btn.Size = UDim2.new(1, -60, 1, 0)
+    btn.BackgroundTransparency = 1
     btn.BorderSizePixel = 0
     btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
     btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
     btn.Font = Enum.Font.Code
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Parent = page
+    btn.Parent = row
+
+    local bindBtn = Instance.new("TextButton")
+    bindBtn.Size = UDim2.fromOffset(52, 20)
+    bindBtn.Position = UDim2.new(1, -56, 0.5, -10)
+    bindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    bindBtn.BorderSizePixel = 0
+    bindBtn.Text = tostring(Binds[key] and Binds[key].Name or "NONE")
+    bindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    bindBtn.Font = Enum.Font.Code
+    bindBtn.TextSize = 11
+    bindBtn.Parent = row
+    Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 3)
 
     btn.MouseButton1Click:Connect(function()
-        Config[key] = not Config[key]
+        applyToggle(key, not Config[key])
         btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
         btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
-
-        if key == "Fly" then toggleFly() end
-        if key == "Noclip" then toggleNoclip() end
-        if key == "SpeedHack" then toggleSpeedHack() end
-        if key == "InfiniteJump" then toggleInfiniteJump() end
-        if key == "BunnyHop" then toggleBunnyHop() end
-        if key == "AntiAFK" then toggleAntiAFK() end
-        if key == "Fullbright" then toggleFullbright() end
-        if key == "AutoReload" then toggleAutoReload() end
-        if key == "NPCHighlight" then setNPCHighlightEnabled(Config.NPCHighlight) end
     end)
 
-    toggles[key] = {btn = btn, label = label}
+    bindBtn.MouseButton1Click:Connect(function()
+        bindingMode = key
+        bindBtn.Text = "..."
+        bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+        showNotify("Нажми клавишу для: " .. label, Color3.fromRGB(0, 200, 255))
+    end)
+
+    toggles[key] = {btn = btn, label = label, bindBtn = bindBtn}
 end
 
 local function makeSlider(page, label, min, max, default, callback)
@@ -640,6 +696,7 @@ local function makeSlider(page, label, min, max, default, callback)
     frame.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     frame.BorderSizePixel = 0
     frame.Parent = page
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 4)
 
     local titleLbl = Instance.new("TextLabel")
     titleLbl.Size = UDim2.new(1, -20, 0, 18)
@@ -744,34 +801,52 @@ end)
 makeToggle(pages.Misc, "Anti-AFK", "AntiAFK")
 makeToggle(pages.Misc, "Fullbright", "Fullbright")
 makeToggle(pages.Misc, "Auto Reload", "AutoReload")
-makeToggle(pages.Misc, "Menu Key", "Menu")
 
 selectTab("Visual")
 
+-- ==== ОБРАБОТКА ВВОДА: БИНДЫ + МЕНЮ ====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-    for key, bind in pairs(Keybinds) do
-        if input.KeyCode == bind then
-            if key == "Menu" then
-                main.Visible = not main.Visible
-                return
+    -- Если сейчас режим бинда — назначаем клавишу
+    if bindingMode then
+        local key = bindingMode
+        bindingMode = nil
+        if input.KeyCode == Enum.KeyCode.Escape then
+            if toggles[key] then
+                toggles[key].bindBtn.Text = tostring(Binds[key] and Binds[key].Name or "NONE")
+                toggles[key].bindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
             end
-            if Config[key] ~= nil then
-                Config[key] = not Config[key]
-                if toggles[key] then
-                    local t = toggles[key]
-                    t.btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", t.label)
-                    t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
-                end
-                if key == "Fly" then toggleFly() end
-                if key == "Noclip" then toggleNoclip() end
-                if key == "BunnyHop" then toggleBunnyHop() end
-                if key == "AutoReload" then toggleAutoReload() end
-                showNotify(string.format("[ %s: %s ]", key, Config[key] and "ON" or "OFF"),
-                    Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80))
+            showNotify("Бинд отменён", Color3.fromRGB(255, 80, 80))
+            return
+        end
+        Binds[key] = input.KeyCode
+        if toggles[key] then
+            toggles[key].bindBtn.Text = input.KeyCode.Name
+            toggles[key].bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
+        end
+        showNotify(string.format("Бинд: %s -> %s", key, input.KeyCode.Name), Color3.fromRGB(0, 200, 255))
+        return
+    end
+
+    -- Меню
+    if input.KeyCode == Binds.Menu then
+        main.Visible = not main.Visible
+        return
+    end
+
+    -- Тогглы по биндам
+    for key, bind in pairs(Binds) do
+        if key ~= "Menu" and input.KeyCode == bind and Config[key] ~= nil then
+            applyToggle(key, not Config[key])
+            if toggles[key] then
+                local t = toggles[key]
+                t.btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", t.label)
+                t.btn.TextColor3 = Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(180, 180, 180)
             end
+            showNotify(string.format("[ %s: %s ]", key, Config[key] and "ON" or "OFF"),
+                Config[key] and Color3.fromRGB(0, 255, 150) or Color3.fromRGB(255, 80, 80))
             return
         end
     end
@@ -933,4 +1008,4 @@ end)
 
 if Config.AntiAFK then toggleAntiAFK() end
 
-showNotify("Скрипт загружен! Delete = меню", Color3.fromRGB(0, 255, 150))
+showNotify(SCRIPT_NAME .. " загружен! " .. Binds.Menu.Name .. " = меню", Color3.fromRGB(0, 255, 150))
