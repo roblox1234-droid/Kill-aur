@@ -1,5 +1,5 @@
 -- ============================================
--- UNIVERSAL ESP + AIMBOT (Drawing API)
+-- FULL ESP + AIMBOT for CS-like Roblox
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -17,7 +17,7 @@ local Config = {
     Chams = true,
     Tracers = false,
     TeamCheck = true,
-    MaxDistance = 5000,
+    MaxDistance = 3000,
 
     -- Aimbot
     Aimbot = false,
@@ -25,7 +25,6 @@ local Config = {
     FOV = 150,
     Smoothness = 0.25,
     VisibleOnly = true,
-    AutoFire = false,
 
     -- Цвета
     TeamColor = Color3.fromRGB(0, 150, 255),
@@ -34,12 +33,15 @@ local Config = {
 }
 -- =============================================
 
+-- Хранилища
 local esp = {}
 local highlights = {}
 
--- ========== ЦВЕТА ==========
+-- ========== ЦВЕТ ==========
 local function getColor(player)
-    if not Config.TeamCheck then return Config.EnemyColor end
+    if not Config.TeamCheck then
+        return Config.EnemyColor
+    end
     if player.Team and LP.Team and player.Team == LP.Team then
         return Config.TeamColor
     end
@@ -55,8 +57,9 @@ local function isVisible(fromPos, toPos, ignoreChar)
     return result == nil or result.Instance:IsDescendantOf(ignoreChar)
 end
 
--- ========== HIGHLIGHT (CHAMS) ==========
+-- ========== HIGHLIGHT ==========
 local function createHighlight(model, color)
+    if not model then return nil end
     local old = model:FindFirstChild("ESP_Highlight")
     if old then old:Destroy() end
     local hl = Instance.new("Highlight")
@@ -122,7 +125,10 @@ local function createESP(player)
 
     player.CharacterAdded:Connect(function(char)
         task.wait(0.5)
-        if highlights[player] then highlights[player]:Destroy() end
+        if highlights[player] then
+            highlights[player]:Destroy()
+            highlights[player] = nil
+        end
         if Config.Chams then
             highlights[player] = createHighlight(char, color)
         end
@@ -145,7 +151,10 @@ local function removeESP(player)
     end
 end
 
-for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+for _, p in ipairs(Players:GetPlayers()) do
+    createESP(p)
+end
+
 Players.PlayerAdded:Connect(createESP)
 Players.PlayerRemoving:Connect(removeESP)
 
@@ -170,7 +179,12 @@ local function getClosestTarget()
             local hum = char:FindFirstChildOfClass("Humanoid")
 
             if head and hum and hum.Health > 0 then
-                if not Config.TeamCheck or not LP.Team or player.Team ~= LP.Team then
+                local isEnemy = true
+                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                    isEnemy = false
+                end
+
+                if isEnemy then
                     local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                     if onScreen and screenPos.Z > 0 then
                         local dx = screenPos.X - Camera.ViewportSize.X / 2
@@ -194,23 +208,26 @@ end
 local function aimAt(target)
     if not target then return end
     local camPos = Camera.CFrame.Position
-    local targetPos = target.Position
-    local newCFrame = CFrame.new(camPos, targetPos)
+    local newCFrame = CFrame.new(camPos, target.Position)
     Camera.CFrame = Camera.CFrame:Lerp(newCFrame, Config.Smoothness)
 end
 
 -- ========== ВВОД ==========
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Config.AimKey then
-        aiming = true
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == Config.AimKey then
+            aiming = true
+        end
     end
 end)
 
 UIS.InputEnded:Connect(function(input, gp)
     if gp then return end
-    if input.KeyCode == Config.AimKey then
-        aiming = false
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        if input.KeyCode == Config.AimKey then
+            aiming = false
+        end
     end
 end)
 
@@ -252,78 +269,84 @@ RunService.RenderStepped:Connect(function()
                 d.healthBg.Visible = false
                 d.healthFill.Visible = false
                 d.tracer.Visible = false
-                continue
-            end
+            else
+                local color = getColor(player)
+                if color ~= d.color then
+                    d.color = color
+                    if highlights[player] then
+                        highlights[player].FillColor = color
+                    end
+                end
 
-            local color = getColor(player)
-            if color ~= d.color then
-                d.color = color
-                if highlights[player] then highlights[player].FillColor = color end
-            end
+                local topPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
+                local botPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
 
-            local topPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
-            local botPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
+                if topPos.Z > 0 and botPos.Z > 0 then
+                    local height = math.abs(botPos.Y - topPos.Y)
+                    if height < 5 then height = 40 end
+                    local width = math.max(height * 0.55, 15)
+                    local x = topPos.X - width / 2
+                    local y = topPos.Y
 
-            if topPos.Z > 0 and botPos.Z > 0 then
-                local height = math.abs(botPos.Y - topPos.Y)
-                if height < 5 then height = 40 end
-                local width = math.max(height * 0.55, 15)
-                local x = topPos.X - width / 2
-                local y = topPos.Y
+                    -- Box
+                    if Config.Box then
+                        d.box.Visible = true
+                        d.box.Color = color
+                        d.box.Size = Vector2.new(width, height)
+                        d.box.Position = Vector2.new(x, y)
+                    else
+                        d.box.Visible = false
+                    end
 
-                -- Box
-                if Config.Box then
-                    d.box.Visible = true
-                    d.box.Color = color
-                    d.box.Size = Vector2.new(width, height)
-                    d.box.Position = Vector2.new(x, y)
+                    -- Name
+                    if Config.Name then
+                        d.name.Visible = true
+                        d.name.Text = string.format("%s [%dm]", player.Name, math.floor(dist))
+                        d.name.Position = Vector2.new(topPos.X, y - 18)
+                        d.name.Color = color
+                    else
+                        d.name.Visible = false
+                    end
+
+                    -- Health
+                    if Config.Health then
+                        local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        d.healthBg.Visible = true
+                        d.healthBg.Size = Vector2.new(3, height)
+                        d.healthBg.Position = Vector2.new(x - 6, y)
+
+                        d.healthFill.Visible = true
+                        d.healthFill.Size = Vector2.new(3, height * ratio)
+                        d.healthFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
+
+                        if ratio > 0.6 then
+                            d.healthFill.Color = Color3.fromRGB(0, 255, 0)
+                        elseif ratio > 0.3 then
+                            d.healthFill.Color = Color3.fromRGB(255, 200, 0)
+                        else
+                            d.healthFill.Color = Color3.fromRGB(255, 50, 50)
+                        end
+                    else
+                        d.healthBg.Visible = false
+                        d.healthFill.Visible = false
+                    end
+
+                    -- Tracers
+                    if Config.Tracers then
+                        d.tracer.Visible = true
+                        d.tracer.Color = color
+                        d.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
+                        d.tracer.To = Vector2.new(topPos.X, botPos.Y)
+                    else
+                        d.tracer.Visible = false
+                    end
                 else
                     d.box.Visible = false
-                end
-
-                -- Name
-                if Config.Name then
-                    d.name.Visible = true
-                    d.name.Text = string.format("%s [%dm]", player.Name, math.floor(dist))
-                    d.name.Position = Vector2.new(topPos.X, y - 18)
-                    d.name.Color = color
-                else
                     d.name.Visible = false
-                end
-
-                -- Health Bar
-                if Config.Health then
-                    local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                    d.healthBg.Visible = true
-                    d.healthBg.Size = Vector2.new(3, height)
-                    d.healthBg.Position = Vector2.new(x - 6, y)
-
-                    d.healthFill.Visible = true
-                    d.healthFill.Size = Vector2.new(3, height * ratio)
-                    d.healthFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
-                    d.healthFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
-                        or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
-                        or Color3.fromRGB(255, 50, 50)
-                else
                     d.healthBg.Visible = false
                     d.healthFill.Visible = false
-                end
-
-                -- Tracers
-                if Config.Tracers then
-                    d.tracer.Visible = true
-                    d.tracer.Color = color
-                    d.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
-                    d.tracer.To = Vector2.new(topPos.X, botPos.Y)
-                else
                     d.tracer.Visible = false
                 end
-            else
-                d.box.Visible = false
-                d.name.Visible = false
-                d.healthBg.Visible = false
-                d.healthFill.Visible = false
-                d.tracer.Visible = false
             end
         else
             d.box.Visible = false
@@ -336,7 +359,8 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ========== ЗАПУСК ==========
-print("[Universal ESP] загружен")
+print("[ESP] Loaded")
 print("[ESP] Box:", Config.Box)
 print("[ESP] Chams:", Config.Chams)
-print("[Aimbot] Key: Q")
+print("[ESP] Health:", Config.Health)
+print("[Aimbot] Key: Q, FOV:", Config.FOV)
