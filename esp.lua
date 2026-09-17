@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA CHEAT + NPC LIST + TP + BINDS
+-- NINJA CHEAT + NPC LIST (FIXED) + TP + BINDS
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -18,7 +18,9 @@ _G.MyCheatLoaded = true
 -- ==== НАСТРОЙКА ====
 local SCRIPT_NAME = "NINJA CHEAT"
 local SCRIPT_AUTHOR = "by you"
-local NPC_LIST_RADIUS = 500  -- радиус отображения NPC в метрах
+local NPC_LIST_RADIUS = 500
+local NPC_LIST_MAX_ROWS = 18
+local NPC_ROW_HEIGHT = 20
 
 local THEME = {
     bg         = Color3.fromRGB(18, 18, 24),
@@ -96,9 +98,9 @@ local infoStroke = Instance.new("UIStroke", infoLabel)
 infoStroke.Color = THEME.border
 infoStroke.Thickness = 1
 
--- ==== NPC LIST UI ====
+-- ==== NPC LIST UI (простой Frame + ручная расстановка) ====
 local npcListFrame = Instance.new("Frame")
-npcListFrame.Size = UDim2.fromOffset(260, 340)
+npcListFrame.Size = UDim2.fromOffset(280, 420)
 npcListFrame.Position = UDim2.fromOffset(10, 10)
 npcListFrame.BackgroundColor3 = THEME.bg
 npcListFrame.BackgroundTransparency = 0.15
@@ -121,25 +123,17 @@ npcListTitle.TextSize = 14
 npcListTitle.TextXAlignment = Enum.TextXAlignment.Left
 npcListTitle.Parent = npcListFrame
 
-local npcListScroll = Instance.new("ScrollingFrame")
-npcListScroll.Size = UDim2.new(1, -12, 1, -34)
-npcListScroll.Position = UDim2.fromOffset(6, 30)
-npcListScroll.BackgroundTransparency = 1
-npcListScroll.BorderSizePixel = 0
-npcListScroll.ScrollBarThickness = 3
-npcListScroll.ScrollBarImageColor3 = THEME.accent
-npcListScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-npcListScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-npcListScroll.Parent = npcListFrame
-
-local npcListLayout = Instance.new("UIListLayout")
-npcListLayout.Padding = UDim.new(0, 2)
-npcListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-npcListLayout.Parent = npcListScroll
-
-local fps, frames, lastTime = 0, 0, tick()
+-- Контейнер (простой Frame с ClipDescendants)
+local npcListContainer = Instance.new("Frame")
+npcListContainer.Size = UDim2.new(1, -10, 1, -34)
+npcListContainer.Position = UDim2.fromOffset(5, 30)
+npcListContainer.BackgroundTransparency = 1
+npcListContainer.ClipsDescendants = true
+npcListContainer.Parent = npcListFrame
 
 -- ==== ГЛАВНОЕ ОКНО ====
+local fps, frames, lastTime = 0, 0, tick()
+
 local main = Instance.new("Frame")
 main.Size = UDim2.fromOffset(520, 380)
 main.Position = UDim2.new(0.5, -260, 0.5, -190)
@@ -424,7 +418,6 @@ local STATIC_BLACKLIST = {
     Obelisk1 = true, Obelisk2 = true, Obelisk3 = true,
     SealedGate = true, SealedGate2 = true, SealedGate3 = true, SealedGate4 = true,
     FogSealedGate = true,
-    -- Спавны и телепорты (не NPC)
     ShadowIslandSetSpawn = true, GojoEstateSetSpawn = true,
     StarSetSpawn = true, JJTSetSpawn = true,
     GojoEstateTPIn = true, GojoEstateTPOut = true,
@@ -453,66 +446,24 @@ local function teleportTo(pos)
     root.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
 end
 
-local hoverTip = Instance.new("TextLabel")
-hoverTip.Size = UDim2.fromOffset(180, 22)
-hoverTip.BackgroundColor3 = THEME.bg2
-hoverTip.BackgroundTransparency = 0.1
-hoverTip.BorderSizePixel = 0
-hoverTip.TextColor3 = THEME.accent
-hoverTip.Font = Enum.Font.Gotham
-hoverTip.TextSize = 11
-hoverTip.Visible = false
-hoverTip.ZIndex = 999
-hoverTip.Parent = gui
-Instance.new("UICorner", hoverTip).CornerRadius = UDim.new(0, 4)
-
--- Работает через task.spawn (надёжнее RenderStepped)
 task.spawn(function()
-    while task.wait(0.15) do
+    while task.wait(0.3) do
         if not Config.NPCList then
             if npcListFrame.Visible then npcListFrame.Visible = false end
             continue
         end
         if not npcListFrame.Visible then npcListFrame.Visible = true end
 
-        -- Позиция — от персонажа или камеры
         local myPos
         local char = LP.Character
-        local myRoot = char and char:FindFirstChild("HumanoidRootPart")
-        if myRoot then
-            myPos = myRoot.Position
+        if char then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            myPos = hrp and hrp.Position or Camera.CFrame.Position
         else
             myPos = Camera.CFrame.Position
         end
 
-        local active = {}
-
-        -- Characters.Server (Players, NPCs, Shikigami)
-        local charsFolder = workspace:FindFirstChild("Characters")
-        if charsFolder then
-            local serverFolder = charsFolder:FindFirstChild("Server")
-            if serverFolder then
-                for _, folderName in ipairs({"Players", "NPCs", "Shikigami"}) do
-                    local folder = serverFolder:FindFirstChild(folderName)
-                    if folder then
-                        for _, obj in ipairs(folder:GetChildren()) do
-                            if obj:IsA("Model") and obj ~= LP.Character then
-                                local pos = getNPCPosition(obj)
-                                if pos then
-                                    local dist = (pos - myPos).Magnitude
-                                    if dist < NPC_LIST_RADIUS * 10 then
-                                        local tag = folderName == "Players" and "PLAYER"
-                                            or folderName == "NPCs" and "ENEMY"
-                                            or "SHIKI"
-                                        active[obj] = {dist = dist, tag = tag}
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
+        local list = {}
 
         -- Map.StaticNPCs
         local mapFolder = workspace:FindFirstChild("Map")
@@ -525,7 +476,7 @@ task.spawn(function()
                         if pos then
                             local dist = (pos - myPos).Magnitude
                             if dist < NPC_LIST_RADIUS then
-                                active[obj] = {dist = dist, tag = "STATIC"}
+                                table.insert(list, {model = obj, dist = dist, tag = "NPC"})
                             end
                         end
                     end
@@ -533,81 +484,72 @@ task.spawn(function()
             end
         end
 
-        -- Удаляем исчезнувших
-        for model, row in pairs(npcRows) do
-            if not active[model] then
-                row.btn:Destroy()
-                npcRows[model] = nil
+        -- Characters.Server
+        local charsFolder = workspace:FindFirstChild("Characters")
+        if charsFolder then
+            local serverFolder = charsFolder:FindFirstChild("Server")
+            if serverFolder then
+                for _, fname in ipairs({"Players", "NPCs", "Shikigami"}) do
+                    local f = serverFolder:FindFirstChild(fname)
+                    if f then
+                        for _, obj in ipairs(f:GetChildren()) do
+                            if obj:IsA("Model") and obj ~= LP.Character then
+                                local pos = getNPCPosition(obj)
+                                if pos then
+                                    local dist = (pos - myPos).Magnitude
+                                    if dist < NPC_LIST_RADIUS * 10 then
+                                        table.insert(list, {model = obj, dist = dist, tag = fname})
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
             end
         end
 
-        -- Создаём/обновляем
-        for model, data in pairs(active) do
-            if not npcRows[model] then
-                local btn = Instance.new("TextButton")
-                btn.Size = UDim2.new(1, 0, 0, 20)
-                btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
-                btn.BackgroundTransparency = 0.5
-                btn.BorderSizePixel = 0
-                btn.Text = ""
-                btn.TextXAlignment = Enum.TextXAlignment.Left
-                btn.Font = Enum.Font.Gotham
-                btn.TextSize = 12
-                btn.AutoButtonColor = true
-                btn.Parent = npcListScroll
-                Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
+        -- Сортируем
+        table.sort(list, function(a, b) return a.dist < b.dist end)
 
-                btn.MouseButton1Click:Connect(function()
-                    if model and model.Parent then
-                        local pos = getNPCPosition(model)
-                        if pos then
-                            teleportTo(pos)
-                            showNotify("TP → " .. model.Name, THEME.accent)
-                        end
-                    end
-                end)
+        -- Ограничиваем
+        while #list > NPC_LIST_MAX_ROWS do
+            table.remove(list)
+        end
 
-                btn.MouseEnter:Connect(function()
-                    btn.BackgroundTransparency = 0.2
-                    btn.BackgroundColor3 = THEME.accent
-                    local m = UIS:GetMouseLocation()
-                    hoverTip.Text = "  TP → " .. model.Name
-                    hoverTip.Position = UDim2.fromOffset(m.X + 15, m.Y + 15)
-                    hoverTip.Visible = true
-                end)
-                btn.MouseLeave:Connect(function()
-                    btn.BackgroundTransparency = 0.5
-                    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 42)
-                    hoverTip.Visible = false
-                end)
+        -- Удаляем старые
+        for _, row in pairs(npcRows) do
+            row:Destroy()
+        end
+        npcRows = {}
 
-                npcRows[model] = {btn = btn}
+        -- Создаём новые
+        for i, data in ipairs(list) do
+            local lbl = Instance.new("TextLabel")
+            lbl.Size = UDim2.new(1, 0, 0, NPC_ROW_HEIGHT)
+            lbl.Position = UDim2.fromOffset(0, (i - 1) * NPC_ROW_HEIGHT)
+            lbl.BackgroundTransparency = 1
+            lbl.Font = Enum.Font.Gotham
+            lbl.TextSize = 12
+            lbl.TextXAlignment = Enum.TextXAlignment.Left
+            lbl.Text = string.format("  %s  —  %dm", data.model.Name, math.floor(data.dist))
+
+            if data.tag == "NPCs" then
+                lbl.TextColor3 = THEME.red
+            elseif data.tag == "Players" then
+                lbl.TextColor3 = THEME.green
+            elseif data.tag == "Shikigami" then
+                lbl.TextColor3 = THEME.blue
+            else
+                lbl.TextColor3 = THEME.yellow
             end
 
-            local data2 = active[model]
-            local displayName = model.Name:gsub("_Server", ""):gsub("_Client", "")
-            local prefix = "🟡 "
-            local color = THEME.yellow
-
-            if data2.tag == "ENEMY" then
-                prefix = "👹 "
-                color = THEME.red
-            elseif data2.tag == "PLAYER" then
-                prefix = "👤 "
-                color = THEME.green
-            elseif data2.tag == "SHIKI" then
-                prefix = "🐾 "
-                color = THEME.blue
-            end
-
-            npcRows[model].btn.Text = string.format("  %s%s  —  %dm", prefix, displayName, math.floor(data2.dist))
-            npcRows[model].btn.TextColor3 = color
-            npcRows[model].btn.LayoutOrder = math.floor(data2.dist)
+            lbl.Parent = npcListContainer
+            table.insert(npcRows, lbl)
         end
     end
 end)
 
--- ==== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====
+-- ==== ESP ====
 local function isVisible(fromPos, toPos, charToIgnore)
     rayParams.FilterDescendantsInstances = {LP.Character, charToIgnore}
     local result = workspace:Raycast(fromPos, toPos - fromPos, rayParams)
