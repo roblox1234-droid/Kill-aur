@@ -99,6 +99,7 @@ npcListFrame.Position = UDim2.fromOffset(10, 10)
 npcListFrame.BackgroundColor3 = THEME.bg
 npcListFrame.BackgroundTransparency = 0.15
 npcListFrame.BorderSizePixel = 0
+npcListFrame.Visible = true
 npcListFrame.Parent = gui
 Instance.new("UICorner", npcListFrame).CornerRadius = UDim.new(0, 8)
 local npcListStroke = Instance.new("UIStroke", npcListFrame)
@@ -828,8 +829,7 @@ local function makeToggle(page, label, key)
     bindBtn.Text = Binds[key] and Binds[key].Name or "NONE"
     bindBtn.TextColor3 = THEME.accent
     bindBtn.Font = Enum.Font.Code
-    bindBtn.TextSize = 11
-    bindBtn.ZIndex = 3
+    bindBtn.TextSize = 11    bindBtn.ZIndex = 3
     bindBtn.Active = true
     bindBtn.Parent = row
     Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 4)
