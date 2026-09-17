@@ -1,5 +1,5 @@
 -- ============================================
--- CHEAT SCRIPT FOR EXECUTOR + NPC HIGHLIGHT
+-- CHEAT SCRIPT + NPC HIGHLIGHT + CUSTOM BINDS
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -15,10 +15,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 if _G.MyCheatLoaded then return end
 _G.MyCheatLoaded = true
 
--- ==== НАЗВАНИЕ СКРИПТА ====
+-- ==== НАСТРОЙКА НАЗВАНИЯ ====
 local SCRIPT_NAME = "MY CHEAT v1.0"
 local SCRIPT_AUTHOR = "by you"
--- ==========================
+-- ============================
 
 for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
     if g.Name == "CheatGUI" then g:Destroy() end
@@ -37,7 +37,7 @@ local Config = {
     NPCHighlight = true,
 }
 
--- ==== БИНДЫ (клавиша по умолчанию для каждого тоггла) ====
+-- ==== СТАРТОВЫЕ БИНДЫ (можно менять в меню) ====
 local Binds = {
     Aimbot = Enum.KeyCode.Q,
     Fly = Enum.KeyCode.F,
@@ -53,7 +53,7 @@ local Binds = {
     AntiAFK = Enum.KeyCode.K,
     Menu = Enum.KeyCode.Delete,
 }
--- =========================================================
+-- ================================================
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "CheatGUI"
@@ -81,8 +81,8 @@ Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 6)
 local fps, frames, lastTime = 0, 0, tick()
 
 local main = Instance.new("Frame")
-main.Size = UDim2.fromOffset(320, 480)
-main.Position = UDim2.new(0.5, -160, 0.5, -240)
+main.Size = UDim2.fromOffset(340, 480)
+main.Position = UDim2.new(0.5, -170, 0.5, -240)
 main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 main.BorderSizePixel = 0
 main.Visible = false
@@ -625,7 +625,7 @@ function toggleAutoReload()
     end
 end
 
--- ==== ФУНКЦИЯ ПРИМЕНЕНИЯ ТОГГЛА ====
+-- ==== ПРИМЕНЕНИЕ ТОГГЛА ====
 local function applyToggle(key, value)
     Config[key] = value
     if key == "Fly" then toggleFly() end
@@ -641,18 +641,18 @@ end
 
 -- ==== МЕНЮ ====
 local toggles = {}
-local bindingMode = nil  -- какой ключ сейчас биндится
+local bindingMode = nil
 
 local function makeToggle(page, label, key)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 26)
+    row.Size = UDim2.new(1, 0, 0, 28)
     row.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
     row.BorderSizePixel = 0
     row.Parent = page
     Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
 
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -60, 1, 0)
+    btn.Size = UDim2.new(1, -75, 1, 0)
     btn.BackgroundTransparency = 1
     btn.BorderSizePixel = 0
     btn.Text = string.format("  [%s]  %s", Config[key] and "+" or "-", label)
@@ -660,19 +660,27 @@ local function makeToggle(page, label, key)
     btn.Font = Enum.Font.Code
     btn.TextSize = 13
     btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.ZIndex = 2
+    btn.Active = true
     btn.Parent = row
 
     local bindBtn = Instance.new("TextButton")
-    bindBtn.Size = UDim2.fromOffset(52, 20)
-    bindBtn.Position = UDim2.new(1, -56, 0.5, -10)
-    bindBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    bindBtn.Size = UDim2.fromOffset(65, 22)
+    bindBtn.Position = UDim2.new(1, -70, 0.5, -11)
+    bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
     bindBtn.BorderSizePixel = 0
-    bindBtn.Text = tostring(Binds[key] and Binds[key].Name or "NONE")
-    bindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+    bindBtn.Text = "[" .. tostring(Binds[key] and Binds[key].Name or "NONE") .. "]"
+    bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
     bindBtn.Font = Enum.Font.Code
     bindBtn.TextSize = 11
+    bindBtn.ZIndex = 3
+    bindBtn.Active = true
     bindBtn.Parent = row
     Instance.new("UICorner", bindBtn).CornerRadius = UDim.new(0, 3)
+
+    local bindStroke = Instance.new("UIStroke", bindBtn)
+    bindStroke.Color = Color3.fromRGB(0, 200, 255)
+    bindStroke.Thickness = 1
 
     btn.MouseButton1Click:Connect(function()
         applyToggle(key, not Config[key])
@@ -682,9 +690,10 @@ local function makeToggle(page, label, key)
 
     bindBtn.MouseButton1Click:Connect(function()
         bindingMode = key
-        bindBtn.Text = "..."
-        bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
-        showNotify("Нажми клавишу для: " .. label, Color3.fromRGB(0, 200, 255))
+        bindBtn.Text = "[...]"
+        bindBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 90)
+        bindBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        showNotify("Нажми клавишу для: " .. label .. " (Escape = отмена)", Color3.fromRGB(0, 200, 255))
     end)
 
     toggles[key] = {btn = btn, label = label, bindBtn = bindBtn}
@@ -804,26 +813,28 @@ makeToggle(pages.Misc, "Auto Reload", "AutoReload")
 
 selectTab("Visual")
 
--- ==== ОБРАБОТКА ВВОДА: БИНДЫ + МЕНЮ ====
+-- ==== ОБРАБОТКА ВВОДА ====
 UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
-    -- Если сейчас режим бинда — назначаем клавишу
+    -- Режим бинда
     if bindingMode then
         local key = bindingMode
         bindingMode = nil
         if input.KeyCode == Enum.KeyCode.Escape then
             if toggles[key] then
-                toggles[key].bindBtn.Text = tostring(Binds[key] and Binds[key].Name or "NONE")
-                toggles[key].bindBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+                toggles[key].bindBtn.Text = "[" .. tostring(Binds[key] and Binds[key].Name or "NONE") .. "]"
+                toggles[key].bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
+                toggles[key].bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
             end
             showNotify("Бинд отменён", Color3.fromRGB(255, 80, 80))
             return
         end
         Binds[key] = input.KeyCode
         if toggles[key] then
-            toggles[key].bindBtn.Text = input.KeyCode.Name
+            toggles[key].bindBtn.Text = "[" .. input.KeyCode.Name .. "]"
+            toggles[key].bindBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 90)
             toggles[key].bindBtn.TextColor3 = Color3.fromRGB(0, 255, 150)
         end
         showNotify(string.format("Бинд: %s -> %s", key, input.KeyCode.Name), Color3.fromRGB(0, 200, 255))
