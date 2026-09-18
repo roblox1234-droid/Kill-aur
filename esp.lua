@@ -1,4 +1,19 @@
 -- ============================================
+-- NINJA CHEAT + TOGGLE AIMBOT + ESP + SILENT AIM
+-- ============================================
+
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local Stats = game:GetService("Stats")
+local Lighting = game:GetService("Lighting")
+local VirtualUser = game:GetService("VirtualUser")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+if _G.MyCheatLoaded then return end
+_G.MyCheatLoaded = true-- ============================================
 -- NINJA CHEAT + SILENT AIM + ESP + AUTOFIRE
 -- ============================================
 
@@ -1995,3 +2010,546 @@ print("[NINJA] Загружено")
 print("[NINJA] E = toggle ESP")
 print("[NINJA] T = toggle Silent Aim")
 print("[NINJA] M / Delete = меню")
+
+-- ==== НАСТРОЙКА ====
+local SCRIPT_NAME = "NINJA CHEAT"
+local SCRIPT_AUTHOR = "by you"
+local NPC_LIST_RADIUS = 500
+local NPC_LIST_MAX_ROWS = 18
+local NPC_ROW_HEIGHT = 20
+local ESP_TOGGLE_KEY = Enum.KeyCode.E
+local SILENT_TOGGLE_KEY = Enum.KeyCode.T
+local AIM_TOGGLE_KEY = Enum.KeyCode.Q   -- клавиша toggle аимбота
+
+local THEME = {
+    bg = Color3.fromRGB(18, 18, 24),
+    bg2 = Color3.fromRGB(22, 22, 30),
+    bg3 = Color3.fromRGB(28, 28, 38),
+    border = Color3.fromRGB(45, 45, 60),
+    accent = Color3.fromRGB(168, 85, 247),
+    text = Color3.fromRGB(220, 220, 230),
+    textDim = Color3.fromRGB(120, 120, 140),
+    danger = Color3.fromRGB(239, 68, 68),
+    green = Color3.fromRGB(0, 255, 140),
+    yellow = Color3.fromRGB(255, 200, 50),
+    red = Color3.fromRGB(255, 80, 80),
+    blue = Color3.fromRGB(100, 200, 255),
+}
+
+for _, g in ipairs(LP:WaitForChild("PlayerGui"):GetChildren()) do
+    if g.Name == "CheatGUI" then g:Destroy() end
+end
+
+local Config = {
+    ESP = true, Box = true, Name = true, HP = true, Tool = true,
+    Chams = true, Tracers = false,
+    ChamsMode = "Both",
+    ESPEnabled = true,
+    TeamCheck = true,
+    DistanceColors = true,
+    DistanceThreshold = 20,
+
+    SilentAim = true,
+    SilentAimFOV = 800,
+    SilentAimVisible = false,
+    SilentAimBone = "Head",
+    SilentAimChance = 100,
+
+    Aimbot = false, ShowFOV = true, FOV = 300,
+    VisibleOnly = true,
+    FIRE_RATE = 0.1, AimStrength = 0.35,
+    AimMode = "Smooth",
+    AimBone = "Head",
+    AimPrediction = true,
+    AimPredictionAmount = 0.15,
+    AimIgnoreFOV = false,
+    AimPriority = "FOV",
+
+    AutoFire = false,
+    AutoFireDelay = 0.1,
+    AutoFireMode = "Auto",
+    AutoFireOnlyWithAimbot = false,
+    AutoFireBurstCount = 3,
+    AutoFireRange = 500,
+    AutoFireRequireTarget = true,
+
+    DashAimbot = true,
+    DashThreshold = 40,
+    DashLockTime = 0.8,
+    DashIgnoreFOV = true,
+    DashHighlight = true,
+
+    KillAura = false,
+    KillAuraRange = 15,
+    KillAuraDelay = 0.15,
+    KillAuraRotate = true,
+
+    Fly = false, Noclip = false,
+    SpeedHack = false, WalkSpeed = 16,
+    InfiniteJump = false, BunnyHop = false,
+    AntiAFK = true, Fullbright = false, AutoReload = false,
+    NPCHighlight = true, NPCList = true,
+}
+
+local Binds = {
+    AutoFire = Enum.KeyCode.X,
+    KillAura = Enum.KeyCode.K,
+    DashAimbot = Enum.KeyCode.Z,
+    Fly = Enum.KeyCode.F,
+    Noclip = Enum.KeyCode.V,
+    BunnyHop = Enum.KeyCode.B,
+    AutoReload = Enum.KeyCode.R,
+    NPCHighlight = Enum.KeyCode.H,
+    NPCList = Enum.KeyCode.N,
+    ESP = Enum.KeyCode.E,
+    Chams = Enum.KeyCode.C,
+    Fullbright = Enum.KeyCode.L,
+    SpeedHack = Enum.KeyCode.G,
+    InfiniteJump = Enum.KeyCode.J,
+    AntiAFK = Enum.KeyCode.P,
+    Menu = Enum.KeyCode.Delete,
+}
+
+-- ===== SILENT AIM =====
+local silentHits = 0
+
+local function isEnemySilent(model)
+    if not model or model == LP.Character then return false end
+    local plr = Players:GetPlayerFromCharacter(model)
+    if plr then
+        if Config.TeamCheck and LP.Team and plr.Team == LP.Team then return false end
+        return true
+    end
+    return true
+end
+
+local function getSilentTarget()
+    local centerX = Camera.ViewportSize.X / 2
+    local centerY = Camera.ViewportSize.Y / 2
+    local closest = nil
+    local shortest = Config.SilentAimFOV
+    local checked = {}
+
+    local function checkModel(model)
+        if checked[model] then return end
+        checked[model] = true
+        if not isEnemySilent(model) then return end
+        local hum = model:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+        local bone = model:FindFirstChild(Config.SilentAimBone)
+            or model:FindFirstChild("Head")
+            or model:FindFirstChild("HumanoidRootPart")
+        if not bone then return end
+        local sp, on = Camera:WorldToViewportPoint(bone.Position)
+        if on and sp.Z > 0 then
+            local dx = sp.X - centerX
+            local dy = sp.Y - centerY
+            local d = math.sqrt(dx*dx + dy*dy)
+            if d < shortest then shortest = d; closest = bone end
+        end
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then checkModel(plr.Character) end
+    end
+    local hl = workspace:FindFirstChild("Highlight")
+    if hl then
+        local en = hl:FindFirstChild("Enemy")
+        if en then
+            local holder = en:FindFirstChild("HighlightHolder")
+            if holder then
+                for _, m in ipairs(holder:GetChildren()) do
+                    if m:IsA("Model") then checkModel(m) end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+if hookmetamethod then
+    local oldNamecall
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if Config.SilentAim and method == "Raycast" and self == workspace then
+            local args = {...}
+            local origin = args[1]
+            local direction = args[2]
+            if typeof(origin) == "Vector3" and typeof(direction) == "Vector3" then
+                local target = getSilentTarget()
+                if target and math.random(100) <= Config.SilentAimChance then
+                    local newDir = (target.Position - origin).Unit * direction.Magnitude
+                    silentHits = silentHits + 1
+                    return oldNamecall(self, origin, newDir, select(3, ...))
+                end
+            end
+        end
+        return oldNamecall(self, ...)
+    end)
+end
+
+-- ===== GUI =====
+local gui = Instance.new("ScreenGui")
+gui.Name = "CheatGUI"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = LP:WaitForChild("PlayerGui")
+
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Size = UDim2.fromOffset(140, 44)
+infoLabel.Position = UDim2.new(1, -150, 0, 10)
+infoLabel.BackgroundColor3 = THEME.bg2
+infoLabel.BackgroundTransparency = 0.15
+infoLabel.BorderSizePixel = 0
+infoLabel.TextColor3 = THEME.accent
+infoLabel.Font = Enum.Font.Code
+infoLabel.TextSize = 13
+infoLabel.Text = "FPS: --\nPing: --"
+infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+infoLabel.TextYAlignment = Enum.TextYAlignment.Center
+infoLabel.ZIndex = 500
+infoLabel.Parent = gui
+Instance.new("UICorner", infoLabel).CornerRadius = UDim.new(0, 8)
+
+local fps, frames, lastTime = 0, 0, tick()
+
+-- FOV Circle
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 1
+fovCircle.Color = Color3.fromRGB(168, 85, 247)
+fovCircle.Transparency = 0.4
+fovCircle.Visible = false
+
+-- Статус аимбота
+local aimStatus = Drawing.new("Text")
+aimStatus.Size = 15
+aimStatus.Outline = true
+aimStatus.OutlineColor = Color3.fromRGB(0, 0, 0)
+aimStatus.Position = Vector2.new(20, 20)
+aimStatus.Visible = true
+aimStatus.Text = "AIMBOT: OFF [Q toggle]"
+aimStatus.Color = Color3.fromRGB(120, 120, 140)
+
+local rayParams = RaycastParams.new()
+rayParams.FilterType = Enum.RaycastFilterType.Exclude
+
+local function getESPColor(player, distance)
+    local isSameTeam = false
+    if Config.TeamCheck then
+        if LP.Team and player.Team == LP.Team then isSameTeam = true end
+    end
+    if isSameTeam then
+        return (Config.DistanceColors and distance > Config.DistanceThreshold)
+            and Color3.fromRGB(0, 255, 255) or Color3.fromRGB(0, 0, 255)
+    else
+        return (Config.DistanceColors and distance > Config.DistanceThreshold)
+            and Color3.fromRGB(255, 165, 0) or Color3.fromRGB(255, 0, 0)
+    end
+end
+
+-- ===== DASH =====
+local playerVelocity = {}
+local DASH_LOCK = {}
+
+local function checkDash(player)
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local vel = hrp.AssemblyLinearVelocity.Magnitude
+    local now = tick()
+    local prev = playerVelocity[player]
+    if not prev then
+        playerVelocity[player] = {vel = vel, time = now}
+        return
+    end
+    local delta = math.abs(vel - prev.vel)
+    if delta >= Config.DashThreshold and vel > 50 then
+        DASH_LOCK[player] = now + Config.DashLockTime
+    end
+    prev.vel = vel
+    prev.time = now
+end
+
+-- ===== ESP =====
+local cache = {}
+
+local function createESP(player)
+    if player == LP or cache[player] then return end
+    cache[player] = {
+        box = Drawing.new("Square"),
+        nameLbl = Drawing.new("Text"),
+        toolLbl = Drawing.new("Text"),
+        hpBg = Drawing.new("Square"),
+        hpFill = Drawing.new("Square"),
+        tracer = Drawing.new("Line"),
+        highlight = nil,
+    }
+    local d = cache[player]
+    d.box.Thickness = 1
+    d.box.Filled = false
+    d.box.Transparency = 1
+    d.box.Visible = false
+    d.nameLbl.Size = 14
+    d.nameLbl.Center = true
+    d.nameLbl.Outline = true
+    d.nameLbl.OutlineColor = Color3.fromRGB(0, 0, 0)
+    d.nameLbl.Visible = false
+    d.toolLbl.Size = 12
+    d.toolLbl.Center = true
+    d.toolLbl.Outline = true
+    d.toolLbl.OutlineColor = Color3.fromRGB(0, 0, 0)
+    d.toolLbl.Visible = false
+    d.hpBg.Filled = true
+    d.hpBg.Color = Color3.fromRGB(20, 20, 25)
+    d.hpBg.Transparency = 0.4
+    d.hpBg.Visible = false
+    d.hpFill.Filled = true
+    d.hpFill.Color = Color3.fromRGB(0, 255, 0)
+    d.hpFill.Transparency = 1
+    d.hpFill.Visible = false
+    d.tracer.Thickness = 1
+    d.tracer.Transparency = 0.5
+    d.tracer.Visible = false
+end
+
+local function removeESP(player)
+    local d = cache[player]
+    if d then
+        for _, obj in pairs(d) do
+            if typeof(obj) == "Drawing" then pcall(function() obj:Remove() end)
+            elseif typeof(obj) == "Instance" then pcall(function() obj:Destroy() end) end
+        end
+        cache[player] = nil
+    end
+end
+
+Players.PlayerAdded:Connect(createESP)
+Players.PlayerRemoving:Connect(removeESP)
+for _, p in ipairs(Players:GetPlayers()) do createESP(p) end
+
+-- ===== AIMBOT TOGGLE =====
+local aimActive = false
+
+UIS.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+    
+    -- TOGGLE AIMBOT по Q
+    if input.KeyCode == AIM_TOGGLE_KEY then
+        aimActive = not aimActive
+        if aimActive then
+            aimStatus.Text = "AIMBOT: ON [Q toggle]"
+            aimStatus.Color = Color3.fromRGB(255, 50, 50)
+            print("[AIMBOT] ON")
+        else
+            aimStatus.Text = "AIMBOT: OFF [Q toggle]"
+            aimStatus.Color = Color3.fromRGB(120, 120, 140)
+            print("[AIMBOT] OFF")
+        end
+        return
+    end
+end)
+
+-- ===== ПОИСК ЦЕЛИ ДЛЯ АИМБОТА =====
+local function getAimTarget()
+    local centerX = Camera.ViewportSize.X / 2
+    local centerY = Camera.ViewportSize.Y / 2
+    local closest = nil
+    local shortest = Config.FOV
+    local checked = {}
+
+    local function check(model)
+        if checked[model] or model == LP.Character then return end
+        checked[model] = true
+        local plr = Players:GetPlayerFromCharacter(model)
+        if plr and Config.TeamCheck and LP.Team and plr.Team == LP.Team then return end
+        local hum = model:FindFirstChildOfClass("Humanoid")
+        if not hum or hum.Health <= 0 then return end
+        local bone = model:FindFirstChild(Config.AimBone)
+            or model:FindFirstChild("Head")
+            or model:FindFirstChild("HumanoidRootPart")
+        if not bone then return end
+        local sp, on = Camera:WorldToViewportPoint(bone.Position)
+        if on and sp.Z > 0 then
+            local dx = sp.X - centerX
+            local dy = sp.Y - centerY
+            local d = math.sqrt(dx*dx + dy*dy)
+            if d < shortest then
+                if Config.VisibleOnly then
+                    local rp = RaycastParams.new()
+                    rp.FilterType = Enum.RaycastFilterType.Exclude
+                    rp.FilterDescendantsInstances = {LP.Character, model}
+                    local res = workspace:Raycast(Camera.CFrame.Position, bone.Position - Camera.CFrame.Position, rp)
+                    if res then return end
+                end
+                shortest = d
+                closest = bone
+            end
+        end
+    end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then check(plr.Character) end
+    end
+    local hl = workspace:FindFirstChild("Highlight")
+    if hl then
+        local en = hl:FindFirstChild("Enemy")
+        if en then
+            local holder = en:FindFirstChild("HighlightHolder")
+            if holder then
+                for _, m in ipairs(holder:GetChildren()) do
+                    if m:IsA("Model") then check(m) end
+                end
+            end
+        end
+    end
+    local wplr = workspace:FindFirstChild("Players")
+    if wplr then
+        for _, m in ipairs(wplr:GetChildren()) do
+            if m:IsA("Model") then check(m) end
+        end
+    end
+
+    return closest
+end
+
+-- ===== ГЛАВНЫЙ ЦИКЛ =====
+RunService.RenderStepped:Connect(function()
+    frames = frames + 1
+    if tick() - lastTime >= 1 then
+        fps = frames
+        frames = 0
+        lastTime = tick()
+        local ping = 0
+        pcall(function()
+            ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+        end)
+        infoLabel.Text = "FPS: " .. fps .. "\nPing: " .. ping .. " ms"
+    end
+
+    -- Dash
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP then checkDash(player) end
+    end
+
+    -- FOV circle — видно когда аим включён
+    if aimActive then
+        fovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        fovCircle.Radius = Config.FOV
+        fovCircle.Color = Color3.fromRGB(255, 50, 50)
+        fovCircle.Visible = true
+    else
+        fovCircle.Visible = false
+    end
+
+    -- AIMBOT: работает когда aimActive (toggle)
+    if aimActive then
+        local target = getAimTarget()
+        if target then
+            local pos = target.Position
+            if Config.AimPrediction then
+                local vel = target.AssemblyLinearVelocity
+                if vel.Magnitude > 1 then
+                    pos = pos + vel * Config.AimPredictionAmount
+                end
+            end
+            local newCF = CFrame.new(Camera.CFrame.Position, pos)
+            if Config.AimMode == "Instant" then
+                Camera.CFrame = newCF
+            else
+                Camera.CFrame = Camera.CFrame:Lerp(newCF, Config.AimStrength)
+            end
+            aimStatus.Text = "AIMBOT: ON [Q]\nЦель: " .. target.Parent.Name
+        else
+            aimStatus.Text = "AIMBOT: ON [Q]\nЦель: НЕТ (FOV=" .. Config.FOV .. ")"
+        end
+    end
+
+    -- ESP
+    if Config.ESPEnabled then
+        local vpSize = Camera.ViewportSize
+        local camPos = Camera.CFrame.Position
+
+        for player, d in pairs(cache) do
+            local char = player.Character
+            local head = char and char:FindFirstChild("Head")
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+
+            if not (head and root and hum and hum.Health > 0) then
+                d.box.Visible = false
+                d.nameLbl.Visible = false
+                d.toolLbl.Visible = false
+                d.hpBg.Visible = false
+                d.hpFill.Visible = false
+                d.tracer.Visible = false
+                if d.highlight then d.highlight.Enabled = false end
+                continue
+            end
+
+            local dist = (camPos - root.Position).Magnitude
+            local color = getESPColor(player, dist)
+            if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
+                color = Color3.fromRGB(255, 255, 0)
+            end
+
+            local topPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
+            local botPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+
+            if topPos.Z > 0 and botPos.Z > 0 then
+                local h = math.abs(botPos.Y - topPos.Y)
+                local w = math.max(h * 0.55, 15)
+                local x = topPos.X - w / 2
+                local y = topPos.Y
+                local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+
+                d.box.Visible = Config.Box
+                d.box.Color = color
+                d.box.Size = Vector2.new(w, h)
+                d.box.Position = Vector2.new(x, y)
+
+                d.nameLbl.Visible = Config.Name
+                if Config.Name then
+                    d.nameLbl.Text = player.Name .. " [" .. math.floor(dist) .. "m]"
+                    d.nameLbl.Position = Vector2.new(topPos.X, y - 18)
+                    d.nameLbl.Color = color
+                end
+
+                d.hpBg.Visible = Config.HP
+                d.hpFill.Visible = Config.HP
+                if Config.HP then
+                    d.hpBg.Position = Vector2.new(x - 6, y)
+                    d.hpBg.Size = Vector2.new(3, h)
+                    d.hpFill.Position = Vector2.new(x - 6, y + h * (1 - ratio))
+                    d.hpFill.Size = Vector2.new(3, h * ratio)
+                    d.hpFill.Color = color
+                end
+            else
+                d.box.Visible = false
+                d.nameLbl.Visible = false
+                d.hpBg.Visible = false
+                d.hpFill.Visible = false
+            end
+        end
+    else
+        for _, d in pairs(cache) do
+            d.box.Visible = false
+            d.nameLbl.Visible = false
+            d.hpBg.Visible = false
+            d.hpFill.Visible = false
+        end
+    end
+end)
+
+print("=======================================")
+print("  NINJA — AIMBOT TOGGLE")
+print("=======================================")
+print("  Q = AIMBOT вкл/выкл (НЕ зажимать)")
+print("  T = Silent Aim toggle")
+print("  E = ESP toggle")
+print("  M = меню")
+print("  FOV: " .. Config.FOV)
+print("=======================================")
