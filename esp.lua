@@ -1,19 +1,3 @@
--- ============================================
--- NINJA CHEAT + TOGGLE AIMBOT + ESP + SILENT AIM
--- ============================================
-
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-local Stats = game:GetService("Stats")
-local Lighting = game:GetService("Lighting")
-local VirtualUser = game:GetService("VirtualUser")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-if _G.MyCheatLoaded then return end
-_G.MyCheatLoaded = true-- ============================================
 -- NINJA CHEAT + SILENT AIM + ESP + AUTOFIRE
 -- ============================================
 
