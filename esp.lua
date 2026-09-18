@@ -1,5 +1,5 @@
 -- ============================================
--- NINJA CHEAT + CHAMS MODES + ADVANCED AUTOFIRE + KILL AURA
+-- NINJA CHEAT + TOGGLE ESP + AUTOFIRE + KILL AURA
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -21,6 +21,7 @@ local SCRIPT_AUTHOR = "by you"
 local NPC_LIST_RADIUS = 500
 local NPC_LIST_MAX_ROWS = 18
 local NPC_ROW_HEIGHT = 20
+local ESP_TOGGLE_KEY = Enum.KeyCode.E   -- клавиша вкл/выкл ESP
 
 local THEME = {
     bg = Color3.fromRGB(18, 18, 24),
@@ -44,33 +45,36 @@ end
 local Config = {
     ESP = true, Box = true, Name = true, HP = true, Tool = true,
     Chams = true, Tracers = false,
-    ChamsMode = "Both",  -- "Both" | "Fill" | "Outline" | "Neon" | "HP"
+    ChamsMode = "Both",
+    ESPEnabled = true,       -- ESP включён при запуске
     TeamCheck = true,
     DistanceColors = true,
     DistanceThreshold = 20,
     Aimbot = false, ShowFOV = true, FOV = 100,
     VisibleOnly = true,
     FIRE_RATE = 0.1, AimStrength = 0.85,
-    -- Auto-Fire
+    AimMode = "Smooth",
+    AimBone = "Head",
+    AimPrediction = true,
+    AimPredictionAmount = 0.15,
+    AimIgnoreFOV = false,
+    AimPriority = "FOV",
     AutoFire = false,
     AutoFireDelay = 0.1,
-    AutoFireMode = "Auto",  -- "Single" | "Burst" | "Auto"
+    AutoFireMode = "Auto",
     AutoFireOnlyWithAimbot = false,
     AutoFireBurstCount = 3,
     AutoFireRange = 500,
     AutoFireRequireTarget = true,
-    -- Dash
     DashAimbot = true,
     DashThreshold = 40,
     DashLockTime = 0.8,
     DashIgnoreFOV = true,
     DashHighlight = true,
-    -- Kill Aura
     KillAura = false,
     KillAuraRange = 15,
     KillAuraDelay = 0.15,
     KillAuraRotate = true,
-    -- Movement
     Fly = false, Noclip = false,
     SpeedHack = false, WalkSpeed = 16,
     InfiniteJump = false, BunnyHop = false,
@@ -418,7 +422,7 @@ local function checkDash(player)
         DASH_LOCK[player] = now + Config.DashLockTime
         if not prev.notified then
             prev.notified = true
-            showNotify("⚡ DASH: " .. player.Name, THEME.yellow)
+            showNotify("DASH: " .. player.Name, THEME.yellow)
             task.delay(0.3, function() if prev then prev.notified = false end end)
         end
     end
@@ -559,9 +563,10 @@ task.spawn(function()
 
         local list = {}
 
-        local cf = workspace:FindFirstChild("Characters")
-        if cf then
-            for _, obj in ipairs(cf:GetChildren()) do
+        -- workspace.Players
+        local plrFolder = workspace:FindFirstChild("Players")
+        if plrFolder then
+            for _, obj in ipairs(plrFolder:GetChildren()) do
                 if obj:IsA("Model") and obj ~= LP.Character then
                     local hum = obj:FindFirstChildOfClass("Humanoid")
                     if hum and hum.Health > 0 then
@@ -569,9 +574,24 @@ task.spawn(function()
                         if pos then
                             local d = (pos - myPos).Magnitude
                             if d < NPC_LIST_RADIUS * 10 then
-                                local tag = Players:FindFirstChild(obj.Name) and "Players" or "NPCs"
-                                table.insert(list, {model = obj, dist = d, tag = tag})
+                                table.insert(list, {model = obj, dist = d, tag = "Players"})
                             end
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Character у игроков
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LP and plr.Character then
+                local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local pos = getNPCPosition(plr.Character)
+                    if pos then
+                        local d = (pos - myPos).Magnitude
+                        if d < NPC_LIST_RADIUS * 10 then
+                            table.insert(list, {model = plr.Character, dist = d, tag = "Players"})
                         end
                     end
                 end
@@ -892,32 +912,28 @@ local function getAuraTargets()
     if not myRoot then return targets end
     local myPos = myRoot.Position
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            local pchar = player.Character
-            local pRoot = pchar:FindFirstChild("HumanoidRootPart")
-            local pHum = pchar:FindFirstChildOfClass("Humanoid")
-
-            if pRoot and pHum and pHum.Health > 0 then
-                local sameTeam = false
-                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
-                    sameTeam = true
-                end
-
-                if not sameTeam then
+    local function checkFolder(folder)
+        if not folder then return end
+        for _, model in ipairs(folder:GetChildren()) do
+            if model:IsA("Model") and model ~= LP.Character then
+                local pRoot = model:FindFirstChild("HumanoidRootPart")
+                local pHum = model:FindFirstChildOfClass("Humanoid")
+                if pRoot and pHum and pHum.Health > 0 then
                     local dist = (pRoot.Position - myPos).Magnitude
                     if dist <= Config.KillAuraRange then
                         table.insert(targets, {
-                            char = pchar,
+                            char = model,
                             root = pRoot,
                             dist = dist,
-                            player = player,
                         })
                     end
                 end
             end
         end
     end
+
+    checkFolder(workspace:FindFirstChild("Players"))
+
     return targets
 end
 
@@ -958,10 +974,10 @@ end
 function toggleKillAura()
     if Config.KillAura then
         startKillAura()
-        showNotify("⚔ Kill Aura: ON", THEME.red)
+        showNotify("Kill Aura: ON", THEME.red)
     else
         stopKillAura()
-        showNotify("⚔ Kill Aura: OFF", THEME.danger)
+        showNotify("Kill Aura: OFF", THEME.danger)
     end
 end
 
@@ -1136,7 +1152,7 @@ local function makeSlider(page, label, min, max, default, callback)
 end
 
 -- ==== ЗАПОЛНЕНИЕ МЕНЮ ====
-makeToggle(pages.Visual, "ESP Master", "ESP")
+makeToggle(pages.Visual, "ESP Master (E)", "ESP")
 makeToggle(pages.Visual, "Box", "Box")
 makeToggle(pages.Visual, "Name + Dist", "Name")
 makeToggle(pages.Visual, "HP Bar", "HP")
@@ -1181,6 +1197,8 @@ end)
 
 -- Combat
 makeToggle(pages.Combat, "Aimbot", "Aimbot")
+makeToggle(pages.Combat, "Prediction", "AimPrediction")
+makeToggle(pages.Combat, "Ignore FOV", "AimIgnoreFOV")
 makeToggle(pages.Combat, "Auto Fire", "AutoFire")
 makeToggle(pages.Combat, "Only with Aimbot", "AutoFireOnlyWithAimbot")
 makeToggle(pages.Combat, "Require Target", "AutoFireRequireTarget")
@@ -1196,6 +1214,90 @@ makeSlider(pages.Combat, "Dash Lock (sec x10)", 1, 30, Config.DashLockTime * 10,
 makeSlider(pages.Combat, "Kill Aura Range", 5, 50, Config.KillAuraRange, function(v) Config.KillAuraRange = v end)
 makeSlider(pages.Combat, "Auto Fire Delay x100", 1, 100, Config.AutoFireDelay * 100, function(v) Config.AutoFireDelay = v / 100 end)
 makeSlider(pages.Combat, "Burst Count", 1, 10, Config.AutoFireBurstCount, function(v) Config.AutoFireBurstCount = v end)
+makeSlider(pages.Combat, "Prediction x100", 1, 50, Config.AimPredictionAmount * 100, function(v)
+    Config.AimPredictionAmount = v / 100
+end)
+
+-- Aim Mode
+local aimModes = {"Smooth", "Instant", "Snap"}
+local aimModeBtn = Instance.new("TextButton")
+aimModeBtn.Size = UDim2.new(1, 0, 0, 30)
+aimModeBtn.BackgroundColor3 = THEME.bg3
+aimModeBtn.BorderSizePixel = 0
+aimModeBtn.Text = "  Aim Mode: " .. Config.AimMode
+aimModeBtn.TextColor3 = THEME.accent
+aimModeBtn.Font = Enum.Font.Gotham
+aimModeBtn.TextSize = 13
+aimModeBtn.TextXAlignment = Enum.TextXAlignment.Left
+aimModeBtn.ZIndex = 1003
+aimModeBtn.Parent = pages.Combat
+Instance.new("UICorner", aimModeBtn).CornerRadius = UDim.new(0, 6)
+
+aimModeBtn.MouseButton1Click:Connect(function()
+    local idx = 1
+    for i, m in ipairs(aimModes) do
+        if m == Config.AimMode then idx = i break end
+    end
+    idx = idx + 1
+    if idx > #aimModes then idx = 1 end
+    Config.AimMode = aimModes[idx]
+    aimModeBtn.Text = "  Aim Mode: " .. Config.AimMode
+    showNotify("Aim: " .. Config.AimMode, THEME.accent)
+end)
+
+-- Aim Bone
+local aimBones = {"Head", "Nearest", "Chest"}
+local aimBoneBtn = Instance.new("TextButton")
+aimBoneBtn.Size = UDim2.new(1, 0, 0, 30)
+aimBoneBtn.BackgroundColor3 = THEME.bg3
+aimBoneBtn.BorderSizePixel = 0
+aimBoneBtn.Text = "  Aim Bone: " .. Config.AimBone
+aimBoneBtn.TextColor3 = THEME.accent
+aimBoneBtn.Font = Enum.Font.Gotham
+aimBoneBtn.TextSize = 13
+aimBoneBtn.TextXAlignment = Enum.TextXAlignment.Left
+aimBoneBtn.ZIndex = 1003
+aimBoneBtn.Parent = pages.Combat
+Instance.new("UICorner", aimBoneBtn).CornerRadius = UDim.new(0, 6)
+
+aimBoneBtn.MouseButton1Click:Connect(function()
+    local idx = 1
+    for i, m in ipairs(aimBones) do
+        if m == Config.AimBone then idx = i break end
+    end
+    idx = idx + 1
+    if idx > #aimBones then idx = 1 end
+    Config.AimBone = aimBones[idx]
+    aimBoneBtn.Text = "  Aim Bone: " .. Config.AimBone
+    showNotify("Bone: " .. Config.AimBone, THEME.accent)
+end)
+
+-- Aim Priority
+local aimPriorities = {"FOV", "Distance", "HP"}
+local aimPriorityBtn = Instance.new("TextButton")
+aimPriorityBtn.Size = UDim2.new(1, 0, 0, 30)
+aimPriorityBtn.BackgroundColor3 = THEME.bg3
+aimPriorityBtn.BorderSizePixel = 0
+aimPriorityBtn.Text = "  Target Priority: " .. Config.AimPriority
+aimPriorityBtn.TextColor3 = THEME.accent
+aimPriorityBtn.Font = Enum.Font.Gotham
+aimPriorityBtn.TextSize = 13
+aimPriorityBtn.TextXAlignment = Enum.TextXAlignment.Left
+aimPriorityBtn.ZIndex = 1003
+aimPriorityBtn.Parent = pages.Combat
+Instance.new("UICorner", aimPriorityBtn).CornerRadius = UDim.new(0, 6)
+
+aimPriorityBtn.MouseButton1Click:Connect(function()
+    local idx = 1
+    for i, m in ipairs(aimPriorities) do
+        if m == Config.AimPriority then idx = i break end
+    end
+    idx = idx + 1
+    if idx > #aimPriorities then idx = 1 end
+    Config.AimPriority = aimPriorities[idx]
+    aimPriorityBtn.Text = "  Target Priority: " .. Config.AimPriority
+    showNotify("Priority: " .. Config.AimPriority, THEME.accent)
+end)
 
 -- Auto-Fire Mode
 local afModes = {"Single", "Burst", "Auto"}
@@ -1256,42 +1358,48 @@ local function getClosestVisibleTarget(maxRange)
     local centerX = Camera.ViewportSize.X / 2
     local centerY = Camera.ViewportSize.Y / 2
 
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LP and player.Character then
-            local char = player.Character
-            local head = char:FindFirstChild("Head")
-            local root = char:FindFirstChild("HumanoidRootPart")
-            local hum = char:FindFirstChildOfClass("Humanoid")
+    -- Собираем все цели: workspace.Players + Players
+    local targets = {}
+    local plrFolder = workspace:FindFirstChild("Players")
+    if plrFolder then
+        for _, model in ipairs(plrFolder:GetChildren()) do
+            if model:IsA("Model") and model ~= LP.Character then
+                table.insert(targets, model)
+            end
+        end
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LP and plr.Character then
+            table.insert(targets, plr.Character)
+        end
+    end
 
-            if head and root and hum and hum.Health > 0 then
-                local sameTeam = false
-                if Config.TeamCheck and LP.Team and player.Team == LP.Team then
-                    sameTeam = true
-                end
+    for _, char in ipairs(targets) do
+        local head = char:FindFirstChild("Head")
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChildOfClass("Humanoid")
 
-                if not sameTeam then
-                    local dist = (camPos - root.Position).Magnitude
-                    if dist <= maxRange then
-                        local sp, on = Camera:WorldToViewportPoint(head.Position)
-                        if on and sp.Z > 0 then
-                            local dx = sp.X - centerX
-                            local dy = sp.Y - centerY
-                            local screenDist = math.sqrt(dx * dx + dy * dy)
+        if head and root and hum and hum.Health > 0 then
+            local dist = (camPos - root.Position).Magnitude
+            if dist <= maxRange then
+                local sp, on = Camera:WorldToViewportPoint(head.Position)
+                if on and sp.Z > 0 then
+                    local dx = sp.X - centerX
+                    local dy = sp.Y - centerY
+                    local screenDist = math.sqrt(dx * dx + dy * dy)
 
-                            if screenDist < Config.FOV then
-                                if Config.VisibleOnly then
-                                    if isVisible(camPos, head.Position, char) then
-                                        if dist < shortest then
-                                            shortest = dist
-                                            closest = head
-                                        end
-                                    end
-                                else
-                                    if dist < shortest then
-                                        shortest = dist
-                                        closest = head
-                                    end
+                    if screenDist < Config.FOV then
+                        if Config.VisibleOnly then
+                            if isVisible(camPos, head.Position, char) then
+                                if dist < shortest then
+                                    shortest = dist
+                                    closest = head
                                 end
+                            end
+                        else
+                            if dist < shortest then
+                                shortest = dist
+                                closest = head
                             end
                         end
                     end
@@ -1359,6 +1467,27 @@ UIS.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
 
+    -- TOGGLE ESP (клавиша E)
+    if input.KeyCode == ESP_TOGGLE_KEY then
+        Config.ESPEnabled = not Config.ESPEnabled
+        if Config.ESPEnabled then
+            showNotify("ESP: ON", THEME.green)
+        else
+            showNotify("ESP: OFF", THEME.danger)
+            -- Скрываем всё
+            for _, d in pairs(cache) do
+                d.box.Visible = false
+                d.nameLbl.Visible = false
+                d.toolLbl.Visible = false
+                d.hpBg.Visible = false
+                d.hpFill.Visible = false
+                d.tracer.Visible = false
+                if d.highlight then d.highlight.Enabled = false end
+            end
+        end
+        return
+    end
+
     -- Single Auto-Fire
     if Config.AutoFire and Config.AutoFireMode == "Single" then
         if input.KeyCode == Enum.KeyCode.X then
@@ -1398,7 +1527,7 @@ UIS.InputBegan:Connect(function(input, gp)
     end
 
     for key, bind in pairs(Binds) do
-        if key ~= "Menu" and input.KeyCode == bind and Config[key] ~= nil then
+        if key ~= "Menu" and key ~= "ESP" and input.KeyCode == bind and Config[key] ~= nil then
             applyToggle(key, not Config[key])
             if toggles[key] then
                 local t = toggles[key]
@@ -1454,7 +1583,7 @@ RunService.RenderStepped:Connect(function()
         fovCircle.Visible = false
     end
 
-    if Config.ESP or Config.Aimbot then
+    if Config.ESPEnabled or Config.Aimbot then
         local vpSize = Camera.ViewportSize
         local centerX, centerY = vpSize.X * 0.5, vpSize.Y * 0.5
         local closestTarget, shortest = nil, Config.FOV
@@ -1467,169 +1596,183 @@ RunService.RenderStepped:Connect(function()
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-            if not (head and root and hum and hum.Health > 0) then
+            -- Если ESP выключен или нет цели — скрываем
+            if not (head and root and hum and hum.Health > 0) or not Config.ESPEnabled then
                 esp.box.Visible = false
                 esp.nameLbl.Visible = false
                 esp.toolLbl.Visible = false
                 esp.hpBg.Visible = false
                 esp.hpFill.Visible = false
                 esp.tracer.Visible = false
-            else
-                local distToPlayer = (camPos - root.Position).Magnitude
+                if esp.highlight then esp.highlight.Enabled = false end
+                continue
+            end
 
-                -- УМНАЯ ПОДСВЕТКА
-                if Config.Chams then
-                    if not esp.highlight or esp.highlight.Parent ~= char then
-                        if esp.highlight then esp.highlight:Destroy() end
-                        local hl = Instance.new("Highlight")
-                        hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        hl.Adornee = char
-                        hl.Parent = char
-                        esp.highlight = hl
+            local distToPlayer = (camPos - root.Position).Magnitude
+
+            -- CHAMS
+            if Config.Chams then
+                if not esp.highlight or esp.highlight.Parent ~= char then
+                    if esp.highlight then esp.highlight:Destroy() end
+                    local hl = Instance.new("Highlight")
+                    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    hl.Adornee = char
+                    hl.Parent = char
+                    esp.highlight = hl
+                end
+                esp.highlight.Enabled = true
+
+                local baseColor = getESPColor(player, distToPlayer)
+                local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
+
+                if isDashing then
+                    local pulse = 0.5 + 0.5 * math.sin(tick() * 15)
+                    esp.highlight.FillColor = Color3.fromRGB(255, 255, 0)
+                    esp.highlight.FillTransparency = 0.3 + pulse * 0.3
+                    esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
+                    esp.highlight.OutlineTransparency = 0
+                elseif Config.ChamsMode == "HP" then
+                    local hpRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                    if hpRatio > 0.7 then
+                        esp.highlight.FillColor = Color3.fromRGB(0, 255, 100)
+                        esp.highlight.FillTransparency = 0.6
+                        esp.highlight.OutlineColor = Color3.fromRGB(0, 255, 100)
+                        esp.highlight.OutlineTransparency = 0.2
+                    elseif hpRatio > 0.35 then
+                        esp.highlight.FillColor = Color3.fromRGB(255, 220, 0)
+                        esp.highlight.FillTransparency = 0.5
+                        esp.highlight.OutlineColor = Color3.fromRGB(255, 220, 0)
+                        esp.highlight.OutlineTransparency = 0.1
+                    else
+                        local pulse = 0.5 + 0.5 * math.sin(tick() * 10)
+                        esp.highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                        esp.highlight.FillTransparency = 0.2 + pulse * 0.2
+                        esp.highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
+                        esp.highlight.OutlineTransparency = 0
                     end
+                elseif Config.ChamsMode == "Fill" then
+                    esp.highlight.FillColor = baseColor
+                    esp.highlight.FillTransparency = 0.45
+                    esp.highlight.OutlineTransparency = 1
+                elseif Config.ChamsMode == "Outline" then
+                    esp.highlight.FillTransparency = 1
+                    esp.highlight.OutlineColor = baseColor
+                    esp.highlight.OutlineTransparency = 0
+                elseif Config.ChamsMode == "Neon" then
+                    esp.highlight.FillColor = Color3.fromRGB(0, 0, 0)
+                    esp.highlight.FillTransparency = 0.7
+                    esp.highlight.OutlineColor = baseColor
+                    esp.highlight.OutlineTransparency = 0
+                else
+                    esp.highlight.FillColor = baseColor
+                    esp.highlight.FillTransparency = 0.55
+                    esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    esp.highlight.OutlineTransparency = 0
+                end
+            elseif esp.highlight then
+                esp.highlight:Destroy()
+                esp.highlight = nil
+            end
 
-                    local baseColor = getESPColor(player, distToPlayer)
+            local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
+            local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
+            local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
+
+            if onScreen and Config.ESPEnabled then
+                local height = math.abs(botPos.Y - topPos.Y)
+                local width = math.max(height * 0.55, 15)
+                local x = topPos.X - width / 2
+                local y = topPos.Y
+
+                local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                local boxColor = getESPColor(player, distToPlayer)
+
+                if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
+                    boxColor = Color3.fromRGB(255, 255, 0)
+                end
+
+                esp.box.Visible = Config.Box
+                esp.box.Color = boxColor
+                esp.box.Position = Vector2.new(x, y)
+                esp.box.Size = Vector2.new(width, height)
+
+                esp.nameLbl.Visible = Config.Name
+                if Config.Name then
+                    esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
+                    esp.nameLbl.Position = Vector2.new(topPos.X, y - 18)
+                    esp.nameLbl.Color = boxColor
+                end
+
+                esp.toolLbl.Visible = Config.Tool
+                if Config.Tool then
+                    local held = char:FindFirstChildOfClass("Tool")
+                    esp.toolLbl.Text = held and held.Name or ""
+                    esp.toolLbl.Position = Vector2.new(topPos.X, y + height + 2)
+                    esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
+                end
+
+                esp.hpBg.Visible = Config.HP
+                esp.hpFill.Visible = Config.HP
+                if Config.HP then
+                    esp.hpBg.Position = Vector2.new(x - 6, y)
+                    esp.hpBg.Size = Vector2.new(3, height)
+                    esp.hpFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
+                    esp.hpFill.Size = Vector2.new(3, height * ratio)
+                    esp.hpFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
+                        or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
+                        or Color3.fromRGB(255, 50, 50)
+                end
+
+                esp.tracer.Visible = Config.Tracers
+                if Config.Tracers then
+                    esp.tracer.Color = boxColor
+                    esp.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
+                    esp.tracer.To = Vector2.new(topPos.X, botPos.Y)
+                end
+            else
+                esp.box.Visible = false
+                esp.nameLbl.Visible = false
+                esp.toolLbl.Visible = false
+                esp.hpBg.Visible = false
+                esp.hpFill.Visible = false
+                esp.tracer.Visible = false
+            end
+
+            -- AIMBOT TARGETING
+            if Config.Aimbot then
+                local aimPart = head
+                if Config.AimBone == "Chest" then
+                    aimPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or head
+                end
+
+                local headScreen, headOn = Camera:WorldToViewportPoint(aimPart.Position)
+                if headOn and headScreen.Z > 0 then
+                    local dx = headScreen.X - centerX
+                    local dy = headScreen.Y - centerY
+                    local d = (dx*dx + dy*dy) ^ 0.5
+
                     local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
 
-                    if isDashing then
-                        local pulse = 0.5 + 0.5 * math.sin(tick() * 15)
-                        esp.highlight.FillColor = Color3.fromRGB(255, 255, 0)
-                        esp.highlight.FillTransparency = 0.3 + pulse * 0.3
-                        esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
-                        esp.highlight.OutlineTransparency = 0
-                    elseif Config.ChamsMode == "HP" then
-                        local hpRatio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                        if hpRatio > 0.7 then
-                            esp.highlight.FillColor = Color3.fromRGB(0, 255, 100)
-                            esp.highlight.FillTransparency = 0.6
-                            esp.highlight.OutlineColor = Color3.fromRGB(0, 255, 100)
-                            esp.highlight.OutlineTransparency = 0.2
-                        elseif hpRatio > 0.35 then
-                            esp.highlight.FillColor = Color3.fromRGB(255, 220, 0)
-                            esp.highlight.FillTransparency = 0.5
-                            esp.highlight.OutlineColor = Color3.fromRGB(255, 220, 0)
-                            esp.highlight.OutlineTransparency = 0.1
-                        else
-                            local pulse = 0.5 + 0.5 * math.sin(tick() * 10)
-                            esp.highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                            esp.highlight.FillTransparency = 0.2 + pulse * 0.2
-                            esp.highlight.OutlineColor = Color3.fromRGB(255, 50, 50)
-                            esp.highlight.OutlineTransparency = 0
-                        end
-                    elseif Config.ChamsMode == "Fill" then
-                        esp.highlight.FillColor = baseColor
-                        esp.highlight.FillTransparency = 0.45
-                        esp.highlight.OutlineTransparency = 1
-                    elseif Config.ChamsMode == "Outline" then
-                        esp.highlight.FillTransparency = 1
-                        esp.highlight.OutlineColor = baseColor
-                        esp.highlight.OutlineTransparency = 0
-                    elseif Config.ChamsMode == "Neon" then
-                        esp.highlight.FillColor = Color3.fromRGB(0, 0, 0)
-                        esp.highlight.FillTransparency = 0.7
-                        esp.highlight.OutlineColor = baseColor
-                        esp.highlight.OutlineTransparency = 0
-                    else
-                        esp.highlight.FillColor = baseColor
-                        esp.highlight.FillTransparency = 0.55
-                        esp.highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                        esp.highlight.OutlineTransparency = 0
-                    end
-                elseif esp.highlight then
-                    esp.highlight:Destroy()
-                    esp.highlight = nil
-                end
-
-                local topPos, topOn = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.9, 0))
-                local botPos, botOn = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3.1, 0))
-                local onScreen = topOn and botOn and topPos.Z > 0 and botPos.Z > 0
-
-                if onScreen and Config.ESP then
-                    local height = math.abs(botPos.Y - topPos.Y)
-                    local width = math.max(height * 0.55, 15)
-                    local x = topPos.X - width / 2
-                    local y = topPos.Y
-
-                    local ratio = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                    local boxColor = getESPColor(player, distToPlayer)
-
-                    if DASH_LOCK[player] and DASH_LOCK[player] > tick() then
-                        boxColor = Color3.fromRGB(255, 255, 0)
+                    local sameTeam = false
+                    if Config.TeamCheck and LP.Team and player.Team == LP.Team then
+                        sameTeam = true
                     end
 
-                    esp.box.Visible = Config.Box
-                    esp.box.Color = boxColor
-                    esp.box.Position = Vector2.new(x, y)
-                    esp.box.Size = Vector2.new(width, height)
-
-                    esp.nameLbl.Visible = Config.Name
-                    if Config.Name then
-                        esp.nameLbl.Text = player.Name .. " [" .. math.floor(distToPlayer) .. "m]"
-                        esp.nameLbl.Position = Vector2.new(topPos.X, y - 18)
-                        esp.nameLbl.Color = boxColor
+                    local canAim = not sameTeam
+                    if canAim and Config.VisibleOnly then
+                        canAim = isVisible(camPos, aimPart.Position, char)
                     end
 
-                    esp.toolLbl.Visible = Config.Tool
-                    if Config.Tool then
-                        local held = char:FindFirstChildOfClass("Tool")
-                        esp.toolLbl.Text = held and held.Name or ""
-                        esp.toolLbl.Position = Vector2.new(topPos.X, y + height + 2)
-                        esp.toolLbl.Color = Color3.fromRGB(255, 210, 80)
+                    if canAim and isDashing and Config.DashAimbot then
+                        dashTarget = aimPart
                     end
 
-                    esp.hpBg.Visible = Config.HP
-                    esp.hpFill.Visible = Config.HP
-                    if Config.HP then
-                        esp.hpBg.Position = Vector2.new(x - 6, y)
-                        esp.hpBg.Size = Vector2.new(3, height)
-                        esp.hpFill.Position = Vector2.new(x - 6, y + height * (1 - ratio))
-                        esp.hpFill.Size = Vector2.new(3, height * ratio)
-                        esp.hpFill.Color = ratio > 0.6 and Color3.fromRGB(0, 255, 0)
-                            or ratio > 0.3 and Color3.fromRGB(255, 200, 0)
-                            or Color3.fromRGB(255, 50, 50)
-                    end
+                    local inFOV = d < Config.FOV or Config.AimIgnoreFOV
 
-                    esp.tracer.Visible = Config.Tracers
-                    if Config.Tracers then
-                        esp.tracer.Color = boxColor
-                        esp.tracer.From = Vector2.new(vpSize.X / 2, vpSize.Y)
-                        esp.tracer.To = Vector2.new(topPos.X, botPos.Y)
-                    end
-                else
-                    esp.box.Visible = false
-                    esp.nameLbl.Visible = false
-                    esp.toolLbl.Visible = false
-                    esp.hpBg.Visible = false
-                    esp.hpFill.Visible = false
-                    esp.tracer.Visible = false
-                end
-
-                if Config.Aimbot then
-                    local headScreen, headOn = Camera:WorldToViewportPoint(head.Position)
-                    if headOn and headScreen.Z > 0 then
-                        local dx = headScreen.X - centerX
-                        local dy = headScreen.Y - centerY
-                        local d = (dx*dx + dy*dy) ^ 0.5
-
-                        local isDashing = DASH_LOCK[player] and DASH_LOCK[player] > tick()
-
-                        local sameTeam = false
-                        if Config.TeamCheck and LP.Team and player.Team == LP.Team then
-                            sameTeam = true
-                        end
-
-                        local canAim = not sameTeam
-                        if canAim and Config.VisibleOnly then
-                            canAim = isVisible(camPos, head.Position, char)
-                        end
-
-                        if canAim and isDashing and Config.DashAimbot then
-                            dashTarget = head
-                        end
-
-                        if canAim and d < shortest then
+                    if canAim and inFOV then
+                        if d < shortest then
                             shortest = d
-                            closestTarget = head
+                            closestTarget = aimPart
                         end
                     end
                 end
@@ -1647,7 +1790,29 @@ RunService.RenderStepped:Connect(function()
         end
 
         if Config.Aimbot and finalTarget then
-            Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, finalTarget.Position), Config.AimStrength)
+            local targetPos = finalTarget.Position
+
+            if Config.AimPrediction then
+                local velocity = finalTarget.AssemblyLinearVelocity
+                if velocity.Magnitude > 1 then
+                    targetPos = targetPos + velocity * Config.AimPredictionAmount
+                end
+            end
+
+            local newCF = CFrame.new(Camera.CFrame.Position, targetPos)
+
+            if Config.AimMode == "Instant" then
+                Camera.CFrame = newCF
+            elseif Config.AimMode == "Snap" then
+                Camera.CFrame = newCF
+                if tick() - lastShot >= 0.02 then
+                    lastShot = tick()
+                    local tool = LP.Character and LP.Character:FindFirstChildOfClass("Tool")
+                    if tool then pcall(function() tool:Activate() end) end
+                end
+            else
+                Camera.CFrame = Camera.CFrame:Lerp(newCF, Config.AimStrength)
+            end
         end
     end
 
@@ -1657,7 +1822,7 @@ end)
 
 if Config.AntiAFK then toggleAntiAFK() end
 
-showNotify(SCRIPT_NAME .. " загружен! M / Delete = меню", THEME.accent)
+showNotify(SCRIPT_NAME .. " загружен! M / Delete = меню, E = ESP", THEME.accent)
 print("[NINJA] Загружено")
-print("[NINJA] Chams Mode: " .. Config.ChamsMode)
-print("[NINJA] Auto-Fire Mode: " .. Config.AutoFireMode)
+print("[NINJA] E = toggle ESP")
+print("[NINJA] M / Delete = меню")
